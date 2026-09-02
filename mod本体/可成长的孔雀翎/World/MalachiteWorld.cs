@@ -10,10 +10,11 @@ namespace 可成长的孔雀翎
 {
     public class MalachiteGlobalNPC : GlobalNPC
     {
-        // 记录所有 Boss 击杀（任意模组），供进度系统与未来的技能点体系使用
+        // 记录所有 Boss 击杀（任意模组），供进度系统与技能点体系使用。
+        // 仅在服务器/单机侧登记（MP 客户端不写），保证世界档权威一致。
         public override void OnKill(NPC npc)
         {
-            if (npc.boss && !Main.dedServ)
+            if (npc.boss && Main.netMode != NetmodeID.MultiplayerClient)
             {
                 MalachiteProgress.Instance.RegisterDefeat(npc);
             }

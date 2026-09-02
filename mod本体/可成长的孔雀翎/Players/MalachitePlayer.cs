@@ -53,6 +53,12 @@ namespace 可成长的孔雀翎
         public HashSet<int> ActiveSigils = new HashSet<int>();
         public bool InCombat { get; private set; }
 
+        // ===== 阶段2 新天赋（v1 纯加点化）：技能点 + 五轨（见 Core\TalentModel.cs）=====
+        public const int TalentSaveVersion = 2;
+        public bool TalentMigrationApplied = false; // 旧档迁移补偿已发放
+        public int SkillPoints = 0;
+        public int[] TrackLevel = new int[TalentCatalog.TrackCount];
+
         private int _draedonCheckTimer = 0;
 
         public override void SaveData(TagCompound tag)
@@ -62,6 +68,12 @@ namespace 可成长的孔雀翎
             tag["hasDiscoveredTruth"] = hasDiscoveredTruth;
             tag["ActiveSigils"] = ActiveSigils.ToList();
             tag["DialogGroups"] = SavedDialogGroups.ToList();
+
+            // ---- 阶段2 新天赋字段（v2 起持久化；旧档缺省由 LoadData 迁移）----
+            tag["talentVersion"] = TalentSaveVersion;
+            tag["talentMigrationApplied"] = TalentMigrationApplied;
+            tag["skillPoints"] = SkillPoints;
+            tag["trackLevel"] = TrackLevel.ToList();
         }
 
         public override void LoadData(TagCompound tag)
@@ -75,6 +87,49 @@ namespace 可成长的孔雀翎
 
             if (tag.ContainsKey("DialogGroups"))
                 SavedDialogGroups = new HashSet<string>(tag.GetList<string>("DialogGroups"));
+
+            // ---- 阶段2 新天赋读档/迁移（V2Active 由切换波次置 true，届时旧模型退役）----
+            if (TalentCatalog.V2Active)
+            {
+                // D10：v1(ActiveSigils) → v2 清空重来；补偿按世界击杀数在 OnEnterWorld 发放一次
+                if (tag.ContainsKey("talentVersion") && tag.GetInt("talentVersion") >= TalentSaveVersion)
+                {
+                    TalentMigrationApplied = tag.GetBool("talentMigrationApplied");
+                    SkillPoints = tag.GetInt("skillPoints");
+                    TrackLevel = tag.GetList<int>("trackLevel").ToArray();
+                    if (TrackLevel.Length != TalentCatalog.TrackCount)
+                        TrackLevel = new int[TalentCatalog.TrackCount];
+                }
+                else
+                {
+                    TalentMigrationApplied = false;
+                    SkillPoints = 0;
+                    TrackLevel = new int[TalentCatalog.TrackCount];
+                    ActiveSigils = new HashSet<int>(); // 旧星图清空重来
+                }
+            }
+            else
+            {
+                // 新键预读（幂等），旧模型运行期间不影响现有行为
+                if (tag.ContainsKey("talentMigrationApplied")) TalentMigrationApplied = tag.GetBool("talentMigrationApplied");
+                if (tag.ContainsKey("skillPoints")) SkillPoints = tag.GetInt("skillPoints");
+                if (tag.ContainsKey("trackLevel"))
+                {
+                    TrackLevel = tag.GetList<int>("trackLevel").ToArray();
+                    if (TrackLevel.Length != TalentCatalog.TrackCount)
+                        TrackLevel = new int[TalentCatalog.TrackCount];
+                }
+            }
+        }
+
+        /// <summary>D10 补偿（切换波次启用后有效）：5 基准 + 当前世界已击杀不同 Boss 数（封顶 30）。</summary>
+        public override void OnEnterWorld()
+        {
+            if (!TalentCatalog.V2Active) return;
+            if (Main.myPlayer != Player.whoAmI || TalentMigrationApplied) return;
+            int kills = ModContent.GetInstance<MalachiteProgress>()?.DefeatedBossCount ?? 0;
+            SkillPoints = Math.Max(SkillPoints, 5 + Math.Min(kills, 30));
+            TalentMigrationApplied = true;
         }
 
         public void SyncPlayerSigils()
