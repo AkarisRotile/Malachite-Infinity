@@ -1,54 +1,97 @@
-通过砍树获得孔雀翎
-会随着游戏进程进行加强
-击败特定boss解锁星图（点击左下角进入UI）
-后续可能会做一些旮旯给木剧情？
-感谢所有喜欢这个mod的大家！
+# 可成长的孔雀翎 · Malachite Infinity
 
-对天赋星图中节点效果有修改建议可以直接告诉我
+一把会陪你成长的丛林之刃 —— 孔雀柳刃。
+A jungle blade that grows with you — the Peacock Willow Blade.
 
+========================================================
+【中文 · 简介】
+孔雀柳刃是一把"会成长"的武器：砍树就有机会获得它。之后它会沿着一条贴近原版节奏的
+成长曲线（按 Boss 推进逐档变强），配上一套独立的「念」伤害体系与「星图」天赋，陪你走完整场冒险。
 
+从 V2.0.0 起，本模组已完全独立：它不再是灾厄（Calamity）的附属模组，不要求安装灾厄，
+也不与灾厄里的"孔雀翎"互相干扰。你可以单独游玩，也可以把它当作灾厄之外的成长内容搭配使用。
+
+[English · Introduction]
+The Peacock Willow Blade is a weapon that "grows": chop down trees to obtain it, and it becomes
+stronger along a growth curve paced after vanilla progression (boss by boss), backed by an
+independent Mind (念) damage class and the Star Map talent system.
+
+As of V2.0.0 this mod is fully standalone: it is no longer an add-on of Calamity, does not require
+Calamity, and never conflicts with Calamity's own "Malachite" weapon. Play it alone, or stack it
+on top of Calamity as extra growth content.
+
+========================================================
+【目前内容一览】 What's included
+
+- 获取：砍树掉落孔雀柳刃（新世界需重新获取）。Obtainable by chopping trees (re-obtain on new worlds).
+- 成长：WillowGrowth 独立成长曲线，伤害/攻速/护甲穿透随 Boss 进度逐档提升（贴近原版梯队）。
+  Growth: the independent WillowGrowth curve scales damage / attack speed / armor penetration through vanilla boss tiers.
+- 「念」伤害：独立伤害类，吃"通用/召唤"全额加成，并对"近战/远程/其它模组"按 25% 兼容。
+  Mind (念): a standalone damage class — full scaling from generic/summon bonuses, 25% compatibility from melee/ranged/other mods.
+- 星图（左下角✦）：「力」页五轨加点（攻击/穿甲/攻速/暴击/并发弹幕，暴击溢出增幅终伤），免费洗点；「技」页为技能预留，开发中。
+  Star Map (✦, bottom-left): "Strength" page — five talent tracks (damage / armor pen / attack speed / crit / volley), free respec; "Technique" page reserved for skills (WIP).
+- 技能点：不同 Boss 首杀发放，同世界在线玩家都有份。
+  Skill points: awarded on first-time boss kills; every online player in the world shares in the reward.
+- 近战形态原型（F 键，可改键）：三段"纯特效弧光"斩击（蓄势—爆发过冲—定格，顿挫手感），命中叠「精准」，双击方向=突进斩。参数仍在实机调参中，手感确认后并入「技」页。
+  Melee form prototype (F key, rebindable): three-step pure-VFX arc slashes (wind-up -> burst overshoot -> settle), "Precision" stacks on hit, double-tap directional dash slash. Tuning in progress; it will become the first "Technique" node once the feel is approved.
+- 领域展开（V 键）：原型技能。 Domain Expansion (V key): prototype ability.
+- 对话与剧情：丛林刃灵少女的陪伴线——右键/对话键闲聊，随进度推进的主线、事件彩蛋与"月下的坦白"。剧情文案均逐句人工确认。
+  Dialogue & story: a gentle jungle-blade spirit companion — idle talk via right-click / dialogue key, story milestones, event easter eggs and the "Moonlit Confession" truth. Story text is line-by-line human-approved.
+- 潜伏：自建潜伏值，满值自动扇形齐射。
+  Stealth: an independent stealth gauge; at full charge, attacks become a fan volley.
+
+========================================================
+【致谢与团队】 Team
 代码：始弦
-bug修复：哈基米3.1P
+Bug 修复：哈基米3.1P
 数值：始弦
 角色立绘：
  - BiliBili：@苗库里
  - Pixiv：@takeez3
 文本：始弦
 
-Added an English translation option, which can be selected in the mod config. (Note: As a non-native English speaker, the translation quality might not be perfect.)
+感谢所有喜欢这个 mod 的大家！欢迎把天赋/数值/手感的任何建议直接告诉我。
+Thanks to everyone who enjoys this mod! Feedback on talents, balance or feel is always welcome.
 
-Credits & Disclaimer:
+========================================================
+【Credits & Disclaimer】
 
-Original Weapon Design & Assets: All credits for the original "Malachite" weapon design, concept, and related assets go to the Calamity Mod Team.
+Original "Malachite" Weapon Design & Assets: All credits for the original Malachite weapon
+concept, design and related assets go to the Calamity Mod Team.
 
-Disclaimer: This is a 100% free, fan-made progression add-on and is not officially affiliated with the Calamity Mod.
+Disclaimer: this is a 100% free, fan-made Terraria mod. Since V2.0.0 it is an independent mod
+and is not a Calamity add-on; it is not affiliated with the Calamity Mod.
 
-V1.0：更新了文本对话，随机触发或右键主动触发
-V1.1：修复bug
-V1.2：更改了部分描述
-V1.2.1：修改了部分属性，以及更改了潜伏攻击
-V1.2.2：修改了部分文字
-V1.2.3：平衡性调整，优化了部分代码
-V1.2.4：修了一下可能的bug？不确定效果
-V1.2.5：前期平衡调整，修了一些bug
-V1.2.6：天赋树更新
-V1.3：优化了天赋树
-V1.3.1：小优化
-V1.3.2：进一步优化，加入了对粒子效果的配置页面
-V1.3.3：小优化
-V1.3.4：对前期的平衡调整，以及极大幅度优化了性能问题
-V1.3.5：调整了数值
-V1.3.6：神秘小更新
-V1.4：you know
-V1.4.2：修复了字体不显示的bug
-V1.4.3：体验优化，增加了可配置选项，平衡调整
-V1.4.4：修bug
-V1.4.5：拆屎山
-V1.4.6：修bug以及稍微加强了前期
-V1.4.7：小幅度更新
-V1.5：新立绘
-V1.5.1：修改了一些叙述
-V1.5.2：轻量级更新，减少卡顿
+代码参考合规声明（思路学习 + 自主实现，未直接复制源码）：
+Code-reference compliance (ideas studied and self-implemented, no direct source copy):
+
+- CalamityModPublic（Azafure, LLC 专有许可·仅参考）：Malachite 潜伏齐射/攻速/右键范式、
+  弹幕残影 Dust 范式；DevilsDevastationHoldout 挥动状态机与镜像思路。
+  https://github.com/CalamityTeam/CalamityModPublic
+- CalamityOverhaul（MIT License, Copyright (c) hocha113）：三层光带配色、领域展开灵感；
+  OniSlashRenderer "爆发过冲→回坐"挥动曲线与弧光带宽/外锐内柔思路。
+  https://github.com/hocha113/CalamityOverhaul
+- CalamityEntropy（社区开源）：BaseSwing 弧光环带/切线火花、特莉波卡的镰刀交替挥向等机制参考。
+  https://github.com/hocha113/CalamityEntropy
+
+========================================================
+【更新记录】 Changelog
+
+V2.0.0 ｜ 独立化重构里程碑（当前版本）
+- 灾厄解绑：删除 CalamityMod 硬前置，模组可完全独立加载运行（与灾厄孔雀翎互不干涉）。
+- 独立成长曲线 WillowGrowth（原版 Boss 梯队 0~9 定稿）+ 「念」独立伤害类。
+- 星图 v2：「力」页五轨加点 +「技」页预留（翻页架构）；技能点经济（Boss 首杀发放，全图玩家有份）。
+- 近战形态原型：纯特效弧光三段斩（蓄势—爆发过冲—定格）＋精准被动＋双击突进斩（实机调参中）。
+- 剧情解绑重构为"丛林刃灵 × 世纪之花"线，并新增"花下败仗"事件；文案逐句人工确认。
+- 旧 20 节点星图整体退役，弹幕效果收敛为直线飞刀/毒/潜伏齐射。
+- 中英双语简介（本文件）。
+[EN] V2.0.0 — Standalone rebuild milestone (current):
+- Dropped the CalamityMod hard dependency; the mod now loads and runs fully standalone.
+- Independent WillowGrowth curve (vanilla boss tiers 0-9) + Mind (念) damage class.
+- Star Map v2: five-talent-track "Strength" page + reserved "Technique" page; skill-point economy (boss first-kills).
+- Melee form prototype: three-step pure-VFX arc slashes + Precision passive + double-tap dash (tuning).
+- Storyline re-bound to "jungle blade spirit x Plantera", new "Defeat under the Flower" event; text line-by-line approved.
+- Legacy 20-node star map retired; projectiles simplified to straight blades / poison / stealth volleys.
 
 V1.5.3+（脱离灾厄重构阶段）：
 弹幕与特效实现参考以下开源项目（合规署名）：
@@ -64,3 +107,32 @@ V1.5.3+（脱离灾厄重构阶段）：
   右键独立替代动作 —— 行为范式参考；弹幕、角度数量曲线与数值均为本模组自主设计。
 - Projectiles/Rogue/MalachiteProj.cs / MalachiteBolt.cs：弹幕残影与拖尾 Dust 范式参考。
 
+Added an English translation option, which can be selected in the mod config.
+(Note: as a non-native English speaker, the translation quality might not be perfect.)
+
+V1.5.2：轻量级更新，减少卡顿
+V1.5.1：修改了一些叙述
+V1.5：新立绘
+V1.4.7：小幅度更新
+V1.4.6：修bug以及稍微加强了前期
+V1.4.5：拆屎山
+V1.4.4：修bug
+V1.4.3：体验优化，增加了可配置选项，平衡调整
+V1.4.2：修复了字体不显示的bug
+V1.4：you know
+V1.3.6：神秘小更新
+V1.3.5：调整了数值
+V1.3.4：对前期的平衡调整，以及极大幅度优化了性能问题
+V1.3.3：小优化
+V1.3.2：进一步优化，加入了对粒子效果的配置页面
+V1.3.1：小优化
+V1.3：优化了天赋树
+V1.2.6：天赋树更新
+V1.2.5：前期平衡调整，修了一些bug
+V1.2.4：修了一下可能的bug？不确定效果
+V1.2.3：平衡性调整，优化了部分代码
+V1.2.2：修改了部分文字
+V1.2.1：修改了部分属性，以及更改了潜伏攻击
+V1.2：更改了部分描述
+V1.1：修复bug
+V1.0：更新了文本对话，随机触发或右键主动触发
