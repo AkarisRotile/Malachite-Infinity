@@ -319,5 +319,82 @@ namespace 可成长的孔雀翎
                 sp.SlashStep = step;
             }
         }
+
+        // ============ ES 招式表（v5.2 批1：蓄力重斩 / 上挑斩 / 满月终结；输入由 MalachitePlayer 解析）============
+
+        /// <summary>近战招式种类（弹幕 Kind）。</summary>
+        public enum MoveKind
+        {
+            Step = 0,      // 普通段击（F 连打）
+            Charged = 1,   // 蓄力重斩（按住 ≥ ChargeFrames 松手）
+            Upper = 2,     // 上挑斩（地面上 + F）
+            Finisher = 3,  // 满月终结（精准满层 + 蓄力松手）
+        }
+
+        /// <summary>进入蓄力态所需按住帧数（16 ≈ 0.27s @60fps）。</summary>
+        public const int ChargeFrames = 16;
+        /// <summary>满月终结所需精准层数（满层 5）。</summary>
+        public const int FinisherMinStacks = 5;
+        /// <summary>蓄力/终结招后的间隔帧（硬直节奏）。</summary>
+        public const int HeavyGapFrames = 24;
+
+        // 各招弧线（基准朝右弧度 start→end；弹幕内按朝向镜像）
+        private static readonly float[] ChargedArc = { 1.15f, -1.15f };   // 大横斩（过前胸的大弧）
+        private static readonly float[] UpperArc = { 0.75f, -2.30f };     // 上挑（下前→上后的大仰弧）
+        private static readonly float[] FinisherArc = { 1.70f, -1.70f };  // 满月（近 180°+ 巨弧）
+
+        /// <summary>朝右基准角 → 实际朝向角（1 右原样 / -1 左水平镜像）。</summary>
+        public static float FrontMirror(float rad, int dir) => dir >= 0 ? rad : MathHelper.Pi - rad;
+
+        /// <summary>蓄力松手出招：精准满层=满月终结，否则=蓄力重斩。</summary>
+        public static void FireHeavy(Player player, bool finisher, float damage)
+        {
+            int dir = player.direction != 0 ? player.direction : 1;
+            var mp = player.GetModPlayer<MalachitePlayer>();
+            float mult = PrecisionDamageMult(mp.PrecisionStacks);
+            float dmgMult = finisher ? 2.1f : 1.5f;
+            int dmg = Math.Max(1, (int)(damage * mult * dmgMult));
+            MoveKind kind = finisher ? MoveKind.Finisher : MoveKind.Charged;
+            float start = finisher ? FinisherArc[0] : ChargedArc[0];
+            float end = finisher ? FinisherArc[1] : ChargedArc[1];
+            SpawnMove(player, player.GetSource_Misc("MalachiteMove"), dmg, finisher ? 13f : 9f, dir,
+                start, end, finisher ? 1.45f : 1.30f, finisher ? 1.45f : 1.15f, kind, finisher ? 2 : 0);
+            SoundEngine.PlaySound(finisher
+                ? SoundID.Item71 with { Volume = 0.85f, Pitch = -0.25f }
+                : SoundID.Item15 with { Volume = 0.8f, Pitch = -0.2f }, player.Center);
+        }
+
+        /// <summary>上挑斩（地面上 + F）：仰弧上挥，命中把敌人挑飞；带小跳跃起步。</summary>
+        public static void UppercutStrike(Player player, IEntitySource source, float damage)
+        {
+            int dir = player.direction != 0 ? player.direction : 1;
+            var mp = player.GetModPlayer<MalachitePlayer>();
+            float mult = PrecisionDamageMult(mp.PrecisionStacks);
+            int dmg = Math.Max(1, (int)(damage * mult * 1.1f));
+            // 小跳跃起步（纯手感：上挑带腾身）
+            if (player.velocity.Y == 0f)
+                player.velocity.Y = -6.5f;
+            SpawnMove(player, source, dmg, 7f, dir,
+                UpperArc[0], UpperArc[1], 1.05f, 1.10f, MoveKind.Upper, 0);
+            SoundEngine.PlaySound(SoundID.Item15 with { Volume = 0.7f, Pitch = 0.35f }, player.Center);
+        }
+
+        /// <summary>生成自定义招式斩击弹幕（绕玩家弧线挥动，见 MeleeSlashProj）。</summary>
+        private static void SpawnMove(Player player, IEntitySource source, int damage, float knockback, int dir,
+            float startRaw, float endRaw, float reachMult, float scaleMult, MoveKind kind, int extraHold)
+        {
+            int idx = Projectile.NewProjectile(source, player.Center, Vector2.Zero,
+                ModContent.ProjectileType<MeleeSlashProj>(), damage, knockback, player.whoAmI);
+            if (idx >= 0 && idx < Main.maxProjectiles && Main.projectile[idx].ModProjectile is MeleeSlashProj sp)
+            {
+                sp.SlashDir = dir;
+                sp.Kind = kind;
+                sp.CustomStart = startRaw;
+                sp.CustomEnd = endRaw;
+                sp.ReachMult = reachMult;
+                sp.ScaleMult = scaleMult;
+                sp.ExtraHold = extraHold;
+            }
+        }
     }
 }

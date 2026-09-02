@@ -1,12 +1,13 @@
 // 代码来源与合规署名：
 // - 手感设计参考（非代码参考）：《苍翼：混沌效应》(© ARC SYSTEM WORKS / 91Act) 角色 ES——
-//   高频连段叠"精准"被动、冲刺斩带无敌帧；挥砍"加速-急停"的顿挫节奏。
+//   高频连段叠"精准"被动、冲刺斩带无敌帧；挥砍"加速-急停"的顿挫节奏；招式以"状态+按键"组合表达。
 // - 挥动结构参考（学习后自主实现，未直接复制源码）：
 //   · CalamityEntropy（社区开源）Core\BaseSwing.cs —— 挥动曲线/弧光拖尾/切线火花思路；
 //     Content\Items\Donator\TlipocasScythe.cs 交替挥向。 https://github.com/hocha113/CalamityEntropy
 //   · CalamityOverhaul（MIT, (c) hocha113）OniSlashRenderer —— 爆发过冲→回坐曲线、带宽/外锐内柔思路。
 //   · CalamityModPublic（Azafure, LLC 专有·仅参考）DevilsDevastationHoldout —— 状态机/镜像思路。
 // - 挥动特效贴图：用户自绘（MeleeSlash.png，已按内容裁掉透明边）；挥动圆心 = 贴图最左像素。
+// - 招式（段击/蓄力重斩/上挑斩/满月终结）为 ES 手感的原创适配，非复刻其指令表。
 // 本文件为自主实现。
 using System;
 using System.Collections.Generic;
@@ -20,28 +21,40 @@ using Microsoft.Xna.Framework.Graphics;
 namespace 可成长的孔雀翎
 {
     /// <summary>
-    /// 近战形态·斩击（原型 v5）：用户自绘挥动特效贴图（圆心=最左像素）绕持有者作爆发挥扫。
-    /// - 生命周期：蓄势(隐/不判定) → 挥扫(爆发曲线"过冲→回坐") → 满形定格；
+    /// 近战形态·斩击（原型 v5.2）：用户自绘挥动特效贴图（圆心=最左像素）绕持有者作爆发挥扫。
+    /// - 生命周期：蓄势(隐/不判定) → 挥扫(爆发曲线"过冲→回坐") → 满形定格(+招式的额外定格)；
+    /// - 招式种类（Kind）：Step 段击 / Charged 蓄力重斩 / Upper 上挑斩 / Finisher 满月终结——
+    ///   每种有自己的弧线/刃长/比例/额外定格（由 MalachiteMelee 在生成时传入）；
     /// - 贴图锚点：裁剪后贴图的 (0, SlashArtPivotY) 即挥动圆心，置于玩家中心随 θ 旋转；
-    ///   贴图向右展开 = 刃长 = StepReach（2026-09-03 范围≈2倍）；
-    /// - 命中判定盒：覆盖整条刃长大盒随挥动扫过；
-    /// - 曳光/拖尾：贴图残影（沿历史角度）+ 外缘曳光细带（沿刃尖轨迹）+ 命中切线火花。
+    /// - 命中判定盒：覆盖整条刃长的大盒随挥动扫过；
+    /// - 曳光/拖尾/路径弧光/击中反馈（扩散环+砍痕闪刃+白热爆点）见 PreDraw/OnHitNPC。
     /// </summary>
     public class MeleeSlashProj : ModProjectile
     {
         /// <summary>用户自绘挥动特效贴图（已裁透明边）。</summary>
         public override string Texture => "可成长的孔雀翎/Textures/MeleeSlash";
 
-        /// <summary>连段段数（0..ComboMaxSteps-1）。</summary>
+        /// <summary>连段段数（仅 Kind=Step 时使用；0..ComboMaxSteps-1）。</summary>
         public int SlashStep = 0;
         /// <summary>玩家朝向（1=右 / -1=左），决定挥动弧线镜像。</summary>
         public int SlashDir = 1;
+        /// <summary>招式种类（生成时由 MalachiteMelee 设置）。</summary>
+        public MalachiteMelee.MoveKind Kind = MalachiteMelee.MoveKind.Step;
+        /// <summary>自定义弧线起止（基准朝右的弧度，弹幕内按 SlashDir 镜像；仅非 Step 用）。</summary>
+        public float CustomStart = 0f;
+        public float CustomEnd = 0f;
+        /// <summary>刃长/比例倍率（相对 StepReach/StepScale）。</summary>
+        public float ReachMult = 1f;
+        public float ScaleMult = 1f;
+        /// <summary>额外定格帧（如满月终结的收势）。</summary>
+        public int ExtraHold = 0;
 
         private int _age = 0;
         private int _flash = 0; // 满形闪余量（过冲峰值那帧起亮，随后逐帧衰减）
         private int _hitFx = 0; // 击中反馈帧余量（扩散环 + 砍痕闪刃）
         private Vector2 _hitPos = Vector2.Zero;
         private Vector2 _hitDir = Vector2.UnitX;
+        private bool _upperHit = false; // 上挑斩只挑飞一次
         // 历史（拖尾用）：挥扫帧的角度与贴图比例、刃尖世界坐标（外缘曳光带）
         private readonly List<float> _th = new List<float>();
         private readonly List<float> _sc = new List<float>();
@@ -49,7 +62,8 @@ namespace 可成长的孔雀翎
 
         private static int Gather => MalachiteMelee.SwingGatherFrames;
         private static int SweepEnd => MalachiteMelee.SwingGatherFrames + MalachiteMelee.SwingSweepFrames;
-        private static int Total => SweepEnd + MalachiteMelee.SwingHoldFrames;
+        private int TotalFrames => SweepEnd + MalachiteMelee.SwingHoldFrames + ExtraHold;
+        private int HoldStart => SweepEnd;
 
         public override void SetDefaults()
         {
@@ -81,6 +95,21 @@ namespace 可成长的孔雀翎
             return MathHelper.Lerp(MalachiteMelee.SwingOvershoot, 1f, SmoothStep01((p - e) / (1f - e)));
         }
 
+        /// <summary>本招的挥动弧线起止（已按朝向镜像）。</summary>
+        private void SwingArc(int step, out float start, out float end)
+        {
+            if (Kind == MalachiteMelee.MoveKind.Step)
+            {
+                start = MalachiteMelee.StepStartRad(step, SlashDir);
+                end = MalachiteMelee.StepEndRad(step, SlashDir);
+            }
+            else
+            {
+                start = MalachiteMelee.FrontMirror(CustomStart, SlashDir);
+                end = MalachiteMelee.FrontMirror(CustomEnd, SlashDir);
+            }
+        }
+
         public override void AI()
         {
             if (Projectile.owner < 0 || Projectile.owner >= Main.maxPlayers)
@@ -95,16 +124,15 @@ namespace 可成长的孔雀翎
                 return;
             }
 
-            if (_age >= Total)
+            if (_age >= TotalFrames)
             {
                 Projectile.Kill();
                 return;
             }
 
             int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
-            float start = MalachiteMelee.StepStartRad(step, SlashDir);
-            float end = MalachiteMelee.StepEndRad(step, SlashDir);
-            float reachBase = MalachiteMelee.StepReach(step);
+            SwingArc(step, out float start, out float end);
+            float reachBase = MalachiteMelee.StepReach(step) * ReachMult;
 
             if (_age < Gather)
             {
@@ -129,7 +157,8 @@ namespace 可成长的孔雀翎
                 if (p >= MalachiteMelee.SwingBurstEnd && _flash == 0)
                     _flash = 3;
 
-                float artScale = reachBase * pulse * MalachiteMelee.StepScale(step) / MalachiteMelee.SlashArtWidth;
+                float scaleFactor = Kind == MalachiteMelee.MoveKind.Step ? MalachiteMelee.StepScale(step) : ScaleMult;
+                float artScale = reachBase * pulse * scaleFactor / MalachiteMelee.SlashArtWidth;
                 _th.Add(theta);
                 _sc.Add(artScale);
                 _tip.Add(owner.Center + new Vector2((float)Math.Cos(theta), (float)Math.Sin(theta)) * (artScale * MalachiteMelee.SlashArtWidth));
@@ -137,7 +166,7 @@ namespace 可成长的孔雀翎
             }
             else
             {
-                // 满形定格：停在终点
+                // 满形定格：停在终点（含招式的额外定格）
                 Projectile.friendly = true;
                 Projectile.rotation = end;
                 PlaceAt(owner, end, reachBase);
@@ -177,6 +206,15 @@ namespace 可成长的孔雀翎
             mp.PrecisionStacks = Math.Min(MalachiteMelee.PrecisionMaxStacks, mp.PrecisionStacks + 1);
             mp.PrecisionTimer = MalachiteMelee.PrecisionDuration;
 
+            // 上挑斩：把命中目标向上挑飞（一次挥动一次）
+            if (Kind == MalachiteMelee.MoveKind.Upper && !_upperHit)
+            {
+                _upperHit = true;
+                target.velocity.Y -= 9f;
+                target.velocity.X *= 0.4f;
+                target.netUpdate = true;
+            }
+
             // ---- 打击感火花：沿挥动方向飞散的切线火花 ----
             Vector2 radial = target.Center - owner.Center;
             if (radial.LengthSquared() < 1f) radial = Vector2.UnitX * (SlashDir != 0 ? SlashDir : 1);
@@ -189,7 +227,7 @@ namespace 可成长的孔雀翎
             travel.Normalize();
             Vector2 perp = new Vector2(-travel.Y, travel.X);
 
-            // ---- 击中反馈（v5.1，参考鬼切/镰刀命中：扩散环+砍痕闪刃+白热爆点；一次挥动只取第一次命中防刷屏）----
+            // ---- 击中反馈（一次挥动只取第一次命中做强反馈，防群怪刷屏）----
             if (_hitFx <= 0)
             {
                 _hitFx = MalachiteMelee.HitFlashFrames;
@@ -206,8 +244,8 @@ namespace 可成长的孔雀翎
             }
 
             int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
-            Color spark = step >= 2 ? MalachitePalette.AccentGold : MalachitePalette.GreenBright;
-            int count = step >= 2 ? 9 : 6;
+            Color spark = step >= 2 || Kind == MalachiteMelee.MoveKind.Finisher ? MalachitePalette.AccentGold : MalachitePalette.GreenBright;
+            int count = Kind == MalachiteMelee.MoveKind.Finisher ? 12 : (step >= 2 ? 9 : 6);
             for (int i = 0; i < count; i++)
             {
                 if (!EffectLimiterSystem.CanSpawnEffect(1, 60)) break;
@@ -221,7 +259,7 @@ namespace 可成长的孔雀翎
             }
         }
 
-        /// <summary>画一段加色粗线（1x1 Pixel 拉伸旋转），构成外缘曳光带。</summary>
+        /// <summary>画一段加色粗线（1x1 Pixel 拉伸旋转），构成弧光/曳光/环。</summary>
         private static void DrawSeg(Vector2 a, Vector2 b, float width, Color color)
         {
             Vector2 mid = (a + b) * 0.5f - Main.screenPosition;
@@ -230,6 +268,17 @@ namespace 可成长的孔雀翎
             if (len < 1f || width < 0.5f) return;
             Main.spriteBatch.Draw(AdditiveLayer.Pixel, mid, null, color, d.ToRotation(),
                 new Vector2(0.5f, 0.5f), new Vector2(len, Math.Max(1f, width)), SpriteEffects.None, 0f);
+        }
+
+        /// <summary>本招命中反馈环的尺寸倍率（蓄力/满月更大）。</summary>
+        private float KindRingK()
+        {
+            return Kind switch
+            {
+                MalachiteMelee.MoveKind.Finisher => 1.9f,
+                MalachiteMelee.MoveKind.Charged => 1.4f,
+                _ => 1f,
+            };
         }
 
         public override bool PreDraw(ref Color lightColor)
@@ -242,12 +291,9 @@ namespace 可成长的孔雀翎
             Vector2 origin = new Vector2(0f, MalachiteMelee.SlashArtPivotY); // 挥动圆心 = 最左像素
             int n = _th.Count;
             int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
-            Color tint = step switch
-            {
-                0 => MalachitePalette.GreenBright,
-                1 => Color.White,
-                _ => MalachitePalette.AccentGold,
-            };
+            Color tint = Kind == MalachiteMelee.MoveKind.Finisher ? MalachitePalette.AccentGold
+                : Kind == MalachiteMelee.MoveKind.Charged ? MalachitePalette.GreenBright
+                : step switch { 0 => MalachitePalette.GreenBright, 1 => Color.White, _ => MalachitePalette.AccentGold };
             Vector2 pivot = owner.Center - Main.screenPosition;
 
             // 1) 正常层：当前刃体贴图本体（亮度倍率调暗，防过曝）
@@ -256,9 +302,9 @@ namespace 可成长的孔雀翎
                 _th[n - 1], origin, _sc[n - 1], SpriteEffects.None, 0f);
 
             // 2) 加色层：挥动路径弧光 + 残影 + 曳光带 + 本体辉光 + 满形闪 + 击中反馈
-            float reachBase = MalachiteMelee.StepReach(step);
-            float holdFade = _age > SweepEnd
-                ? MathHelper.Lerp(1f, 0.45f, (_age - SweepEnd) / (float)Math.Max(1, MalachiteMelee.SwingHoldFrames))
+            float reachBase = MalachiteMelee.StepReach(step) * ReachMult;
+            float holdFade = _age > HoldStart
+                ? MathHelper.Lerp(1f, 0.45f, (_age - HoldStart) / (float)Math.Max(1, MalachiteMelee.SwingHoldFrames + ExtraHold))
                 : 1f;
             float edgeW = Math.Max(3f, reachBase * MalachiteMelee.SlashEdgeWidth);
             float bandW = Math.Max(5f, reachBase * MalachiteMelee.SlashBandWidth);
@@ -267,7 +313,8 @@ namespace 可成长的孔雀翎
             // 2a 挥动路径弧光：扇形路径填充（从挥扫起点铺到当前刃位，越近前缘越白热）
             //     参考鬼切斩痕弧光(外缘=刀尖轨迹锐利/内缘软融)与特莉波卡镰刀大弧光扫痕
             {
-                float theta0 = MalachiteMelee.StepStartRad(step, SlashDir);
+                SwingArc(step, out float theta0, out float _unusedEnd);
+                _ = _unusedEnd;
                 float theta1 = _th[n - 1];
                 float R = _sc[n - 1] * MalachiteMelee.SlashArtWidth;
                 float Ri = R * MalachiteMelee.PathInnerK;
@@ -285,11 +332,9 @@ namespace 可成长的孔雀翎
                         Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
                         Vector2 inP = owner.Center + dd * Ri;
                         Vector2 outP = owner.Center + dd * R;
-                        // 径向填充块（宽=切向弧距 → 相邻块拼成扇面）
                         float ga = MalachiteMelee.PathGlowAlpha * (0.2f + 0.8f * tk) * holdFade;
                         Color gc = Color.Lerp(tint, Color.White, Math.Clamp(tk * 1.7f, 0f, 1f));
                         DrawSeg(inP, outP, wid, gc * ga);
-                        // 外缘锐线（刀尖轨迹最亮边）
                         if (hasPrev)
                             DrawSeg(prevOuter, outP, Math.Max(2f, reachBase * MalachiteMelee.PathEdgeWidth), gc * (ga * 1.9f));
                         prevOuter = outP;
@@ -331,11 +376,11 @@ namespace 可成长的孔雀翎
                     DrawSeg(_tip[i], _tip[i + 1], bandW * 0.8f, Color.White * fa);
             }
 
-            // 2e 击中反馈：扩散环 + 砍痕闪刃（参考鬼切/镰刀命中反馈）
+            // 2e 击中反馈：扩散环 + 砍痕闪刃（参考鬼切/镰刀命中反馈；蓄力/满月环更大）
             if (_hitFx > 0)
             {
                 float t = _hitFx / (float)MalachiteMelee.HitFlashFrames; // 1 → 0 衰减
-                float ringR = MalachiteMelee.HitRingMaxR * (1f - t) + 5f;
+                float ringR = MalachiteMelee.HitRingMaxR * KindRingK() * (1f - t) + 5f;
                 Color rc = Color.Lerp(Color.White, tint, 0.4f) * (0.9f * t);
                 int segs = 14;
                 for (int s = 0; s < segs; s++)

@@ -57,6 +57,12 @@ namespace 可成长的孔雀翎
         private int _lastLeftTapTick = -100;
         private int _lastRightTapTick = -100;
 
+        // ===== v5.2 ES 招式输入态（非存档字段）=====
+        private bool _meleePrevKey = false;
+        private int _meleeHoldStartTick = -100;
+        private bool _meleeCharged = false;
+        private bool _meleeTapBuffered = false;
+
         private int _draedonCheckTimer = 0;
 
         public override void SaveData(TagCompound tag)
@@ -159,25 +165,72 @@ namespace 可成长的孔雀翎
                 float regen = InCombat ? 0.35f : 1.5f;
                 stealthValue = Math.Min(StealthSystem.NativeMaxStealth, stealthValue + regen);
 
-                // ===== 近战形态原型（ES 流 MVP）：状态维护 + 独立按键出刀 + 双击方向=突进斩 =====
+                // ===== 近战形态原型（ES 流 v5.2）：点按=段击/上+F=上挑 / 按住≥ChargeFrames=蓄力(松手=重斩或满月终结) =====
                 if (MalachiteMelee.IsPrototypeActive(Player))
                 {
                     if (PrecisionTimer > 0 && --PrecisionTimer == 0)
                         PrecisionStacks = 0;
-
-                    // 按住「近战攻击」键 = 连段出刀（间隔 SwingInterval，设置里可改键）
                     if (MeleeFireCd > 0) MeleeFireCd--;
+
                     var meleeKey = MalachiteKeybinds.MeleeKey;
-                    if (meleeKey != null && meleeKey.Current && MeleeFireCd <= 0)
+                    bool cur = meleeKey != null && meleeKey.Current;
+                    bool just = meleeKey != null && meleeKey.JustPressed;
+                    bool rel = meleeKey != null && meleeKey.JustReleased;
+                    int now = (int)Main.GameUpdateCount;
+
+                    if (just)
                     {
-                        int wd = Player.HeldItem != null ? Player.GetWeaponDamage(Player.HeldItem) : 32;
-                        MalachiteMelee.TryMeleeStrike(Player, Player.GetSource_Misc("MalachiteMelee"), wd, 4f);
+                        _meleeHoldStartTick = now;
+                        _meleeCharged = false;
+                        if (MeleeFireCd > 0)
+                            _meleeTapBuffered = true; // 单缓冲：冷却中按 F，冷却结束自动出招
+                    }
+
+                    if (cur)
+                    {
+                        // 按住足够久 → 进入蓄力态（出现翠绿光点提示）
+                        if (!_meleeCharged && now - _meleeHoldStartTick >= MalachiteMelee.ChargeFrames)
+                        {
+                            _meleeCharged = true;
+                            if (EffectLimiterSystem.CanSpawnEffect(1, 60) && now % 6 == 0)
+                                EffectLimiterSystem.SpawnSpark(
+                                    Player.Center + new Vector2(Player.direction * 40f, -8f) + Main.rand.NextVector2Circular(12f, 12f),
+                                    Vector2.Zero, MalachitePalette.GreenBright, 0.8f, 8);
+                        }
+                    }
+                    else if (rel)
+                    {
+                        if (_meleeCharged)
+                        {
+                            // 松手出招：精准满层=满月终结，否则=蓄力重斩
+                            int wd = Player.HeldItem != null ? Player.GetWeaponDamage(Player.HeldItem) : 32;
+                            bool finisher = PrecisionStacks >= MalachiteMelee.FinisherMinStacks;
+                            MalachiteMelee.FireHeavy(Player, finisher, wd);
+                            MeleeFireCd = MalachiteMelee.HeavyGapFrames;
+                        }
+                        else if (MeleeFireCd <= 0)
+                        {
+                            // 快速点按 → 段击 / 上挑
+                            DoQuickMeleeStrike();
+                            MeleeFireCd = MalachiteMelee.SwingInterval;
+                        }
+                        else
+                        {
+                            _meleeTapBuffered = true;
+                        }
+                    }
+
+                    // 缓冲消费（冷却结束当帧出招）
+                    if (_meleeTapBuffered && MeleeFireCd <= 0)
+                    {
+                        _meleeTapBuffered = false;
+                        DoQuickMeleeStrike();
                         MeleeFireCd = MalachiteMelee.SwingInterval;
                     }
 
+                    // 双击方向 = 突进斩（不变）
                     bool l = Player.controlLeft;
                     bool r = Player.controlRight;
-                    int now = (int)Main.GameUpdateCount;
                     if (l && !_prevCtrlLeft)
                     {
                         if (now - _lastLeftTapTick <= MalachiteMelee.DoubleTapWindow)
@@ -192,12 +245,16 @@ namespace 可成长的孔雀翎
                     }
                     _prevCtrlLeft = l;
                     _prevCtrlRight = r;
+                    _meleePrevKey = cur;
                 }
                 else
                 {
                     MeleeFireCd = 0;
                     _prevCtrlLeft = false;
                     _prevCtrlRight = false;
+                    _meleePrevKey = false;
+                    _meleeCharged = false;
+                    _meleeTapBuffered = false;
                 }
             }
 
@@ -214,6 +271,17 @@ namespace 可成长的孔雀翎
                     }
                 }
             }
+        }
+
+        /// <summary>点按 F 的段击：地面上方向「上」→ 上挑斩；否则普通连段。</summary>
+        private void DoQuickMeleeStrike()
+        {
+            bool uppercut = Player.controlUp && Player.velocity.Y == 0f && !Player.controlJump;
+            int wd = Player.HeldItem != null ? Player.GetWeaponDamage(Player.HeldItem) : 32;
+            if (uppercut)
+                MalachiteMelee.UppercutStrike(Player, Player.GetSource_Misc("MalachiteMelee"), wd);
+            else
+                MalachiteMelee.TryMeleeStrike(Player, Player.GetSource_Misc("MalachiteMelee"), wd, 4f);
         }
 
         public override void Kill(double damage, int hitDirection, bool pvp, PlayerDeathReason damageSource)
