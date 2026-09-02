@@ -1,3 +1,7 @@
+// 代码来源与合规署名：
+// - 手感设计参考（非代码参考）：《苍翼：混沌效应》(© ARC SYSTEM WORKS / 91Act) 角色 ES——
+//   高频连段叠"精准"被动、冲刺斩带无敌帧等操作体验；本文件为自主实现，无任何源码或素材复用。
+// 本文件为自主实现。
 using System;
 using Terraria;
 using Terraria.ID;
