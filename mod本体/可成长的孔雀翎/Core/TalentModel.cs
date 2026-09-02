@@ -211,8 +211,10 @@ namespace 可成长的孔雀翎
         public const float SlashArtPivotY = 12.5f;
         /// <summary>刃体贴图本体绘制透明度（正常光照层）。</summary>
         public const float SlashArtAlpha = 1.0f;
+        /// <summary>刃体贴图整体亮度倍率（<1 即调暗本体，防过曝；2026-09-03 实机要求调低）。</summary>
+        public const float SlashArtBrightness = 0.8f;
         /// <summary>刃体贴图加色辉光强度（叠加一层柔和发光）。</summary>
-        public const float SlashArtGlowAlpha = 0.45f;
+        public const float SlashArtGlowAlpha = 0.30f;
 
         // ---- 曳光/拖尾（适配贴图：沿刃尖轨迹的加色细带 + 贴图残影）----
         /// <summary>曳光整体透明度（0~1）。</summary>
@@ -223,6 +225,22 @@ namespace 可成长的孔雀翎
         public const float SlashBandWidth = 0.20f;
         /// <summary>轨迹采样上限（帧，= 拖尾残影/曳光带长度）。</summary>
         public const int SlashTrailMax = 12;
+
+        // ---- 挥动路径特效（v5.1：参考鬼切斩痕弧光 / 特莉波卡镰刀大弧光：扇形路径填充 + 外缘锐线）----
+        /// <summary>路径扇内半径比例（相对刃尖外半径，贴图近端薄）。</summary>
+        public const float PathInnerK = 0.30f;
+        /// <summary>路径扇填充透明度（加色，低值防过曝）。</summary>
+        public const float PathGlowAlpha = 0.16f;
+        /// <summary>路径外缘锐亮线宽度比例（相对刃尖外半径）。</summary>
+        public const float PathEdgeWidth = 0.06f;
+
+        // ---- 击中反馈（v5.1：参考鬼切/镰刀命中：扩散环 + 砍痕闪刃 + 白热爆点）----
+        /// <summary>命中反馈持续帧数。</summary>
+        public const int HitFlashFrames = 7;
+        /// <summary>命中扩散环最终半径（px）。</summary>
+        public const float HitRingMaxR = 46f;
+        /// <summary>命中砍痕闪刃长度（px，沿挥动切线）。</summary>
+        public const float HitSlashLen = 60f;
 
         // ---- 命中判定盒（覆盖挥动半径的大盒，随挥动扫过）----
         /// <summary>判定盒中心所在的半径比例（相对 StepReach；0.5 = 覆盖内~外缘）。</summary>

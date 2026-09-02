@@ -11,6 +11,8 @@
 using System;
 using System.Collections.Generic;
 using Terraria;
+using Terraria.Audio;
+using Terraria.ID;
 using Terraria.ModLoader;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -37,6 +39,9 @@ namespace 可成长的孔雀翎
 
         private int _age = 0;
         private int _flash = 0; // 满形闪余量（过冲峰值那帧起亮，随后逐帧衰减）
+        private int _hitFx = 0; // 击中反馈帧余量（扩散环 + 砍痕闪刃）
+        private Vector2 _hitPos = Vector2.Zero;
+        private Vector2 _hitDir = Vector2.UnitX;
         // 历史（拖尾用）：挥扫帧的角度与贴图比例、刃尖世界坐标（外缘曳光带）
         private readonly List<float> _th = new List<float>();
         private readonly List<float> _sc = new List<float>();
@@ -139,6 +144,7 @@ namespace 可成长的孔雀翎
             }
 
             if (_flash > 0) _flash--;
+            if (_hitFx > 0) _hitFx--;
             _age++;
         }
 
@@ -182,6 +188,22 @@ namespace 可成长的孔雀翎
                 travel = radial.RotatedBy(MathHelper.PiOver2 * (SlashDir < 0 ? -0.5f : 0.5f));
             travel.Normalize();
             Vector2 perp = new Vector2(-travel.Y, travel.X);
+
+            // ---- 击中反馈（v5.1，参考鬼切/镰刀命中：扩散环+砍痕闪刃+白热爆点；一次挥动只取第一次命中防刷屏）----
+            if (_hitFx <= 0)
+            {
+                _hitFx = MalachiteMelee.HitFlashFrames;
+                _hitPos = target.Center;
+                _hitDir = travel;
+                SoundEngine.PlaySound(SoundID.Item15 with { Volume = 0.32f, Pitch = 0.25f }, target.Center);
+                for (int i = 0; i < 4; i++)
+                {
+                    if (!EffectLimiterSystem.CanSpawnEffect(1, 60)) break;
+                    EffectLimiterSystem.SpawnSpark(target.Center + Main.rand.NextVector2Circular(6f, 6f),
+                        travel * Main.rand.NextFloat(0.5f, 2.2f) + Main.rand.NextVector2Circular(2f, 2f),
+                        Color.White, Main.rand.NextFloat(1.2f, 1.9f), 12);
+                }
+            }
 
             int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
             Color spark = step >= 2 ? MalachitePalette.AccentGold : MalachitePalette.GreenBright;
@@ -228,36 +250,78 @@ namespace 可成长的孔雀翎
             };
             Vector2 pivot = owner.Center - Main.screenPosition;
 
-            // 1) 正常层：当前刃体贴图本体（随世界光照亮度但不做调色，特效贴图自带颜色）
-            Main.spriteBatch.Draw(tex, pivot, null, Color.White * MalachiteMelee.SlashArtAlpha,
+            // 1) 正常层：当前刃体贴图本体（亮度倍率调暗，防过曝）
+            Main.spriteBatch.Draw(tex, pivot, null,
+                new Color(MalachiteMelee.SlashArtBrightness, MalachiteMelee.SlashArtBrightness, MalachiteMelee.SlashArtBrightness) * MalachiteMelee.SlashArtAlpha,
                 _th[n - 1], origin, _sc[n - 1], SpriteEffects.None, 0f);
 
-            // 2) 加色层：残影（拖尾）+ 外缘曳光带 + 本体辉光 + 满形闪
+            // 2) 加色层：挥动路径弧光 + 残影 + 曳光带 + 本体辉光 + 满形闪 + 击中反馈
             float reachBase = MalachiteMelee.StepReach(step);
+            float holdFade = _age > SweepEnd
+                ? MathHelper.Lerp(1f, 0.45f, (_age - SweepEnd) / (float)Math.Max(1, MalachiteMelee.SwingHoldFrames))
+                : 1f;
             float edgeW = Math.Max(3f, reachBase * MalachiteMelee.SlashEdgeWidth);
             float bandW = Math.Max(5f, reachBase * MalachiteMelee.SlashBandWidth);
             AdditiveLayer.Begin();
 
-            // 2a 贴图残影：沿历史角度逐帧重绘刃影，越旧越淡（加速段帧距拉开/刹车收拢 = 速度可视化）
+            // 2a 挥动路径弧光：扇形路径填充（从挥扫起点铺到当前刃位，越近前缘越白热）
+            //     参考鬼切斩痕弧光(外缘=刀尖轨迹锐利/内缘软融)与特莉波卡镰刀大弧光扫痕
+            {
+                float theta0 = MalachiteMelee.StepStartRad(step, SlashDir);
+                float theta1 = _th[n - 1];
+                float R = _sc[n - 1] * MalachiteMelee.SlashArtWidth;
+                float Ri = R * MalachiteMelee.PathInnerK;
+                if (Math.Abs(theta1 - theta0) > 0.001f)
+                {
+                    int steps = 18;
+                    float dAng = Math.Abs(theta1 - theta0) / steps;
+                    float wid = Math.Max(3f, dAng * R * 0.92f);
+                    Vector2 prevOuter = Vector2.Zero;
+                    bool hasPrev = false;
+                    for (int k = 0; k <= steps; k++)
+                    {
+                        float tk = k / (float)steps;
+                        float th = MathHelper.Lerp(theta0, theta1, tk);
+                        Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
+                        Vector2 inP = owner.Center + dd * Ri;
+                        Vector2 outP = owner.Center + dd * R;
+                        // 径向填充块（宽=切向弧距 → 相邻块拼成扇面）
+                        float ga = MalachiteMelee.PathGlowAlpha * (0.2f + 0.8f * tk) * holdFade;
+                        Color gc = Color.Lerp(tint, Color.White, Math.Clamp(tk * 1.7f, 0f, 1f));
+                        DrawSeg(inP, outP, wid, gc * ga);
+                        // 外缘锐线（刀尖轨迹最亮边）
+                        if (hasPrev)
+                            DrawSeg(prevOuter, outP, Math.Max(2f, reachBase * MalachiteMelee.PathEdgeWidth), gc * (ga * 1.9f));
+                        prevOuter = outP;
+                        hasPrev = true;
+                    }
+                }
+            }
+
+            // 2b 贴图残影：越旧越淡偏 tint，越新越白热略放大
             for (int i = 0; i < n - 1; i++)
             {
                 float age = i / (float)Math.Max(1, n - 2);
-                float a = MalachiteMelee.SlashVisualAlpha * MathHelper.Lerp(0.08f, 0.5f, age);
-                Main.spriteBatch.Draw(tex, pivot, null, Color.White * a, _th[i], origin, _sc[i], SpriteEffects.None, 0f);
+                float a = MalachiteMelee.SlashVisualAlpha * (0.05f + 0.75f * age * age) * holdFade;
+                Color gc = Color.Lerp(tint, Color.White, Math.Clamp(age * 1.5f, 0f, 1f));
+                Main.spriteBatch.Draw(tex, pivot, null, gc * a, _th[i], origin, _sc[i] * MathHelper.Lerp(0.9f, 1.03f, age), SpriteEffects.None, 0f);
             }
 
-            // 2b 外缘曳光：内软外锐细带（沿刃尖轨迹）
+            // 2b2 刃尖曳光带：宽软层 + 细亮层（新段近白热）
             for (int i = 0; i < _tip.Count - 1; i++)
             {
                 float age = i / (float)Math.Max(1, _tip.Count - 2);
-                float a = MalachiteMelee.SlashVisualAlpha * MathHelper.Lerp(0.15f, 0.85f, age);
-                DrawSeg(_tip[i], _tip[i + 1], bandW, tint * (a * 0.35f));
-                DrawSeg(_tip[i], _tip[i + 1], edgeW, tint * a);
+                float a = MalachiteMelee.SlashVisualAlpha * (0.10f + 0.9f * age) * holdFade;
+                Color bc = Color.Lerp(tint, Color.White, Math.Clamp(age * 1.3f, 0f, 1f));
+                DrawSeg(_tip[i], _tip[i + 1], bandW * 1.6f, bc * (a * 0.22f));
+                DrawSeg(_tip[i], _tip[i + 1], edgeW, bc * a);
             }
 
-            // 2c 本体加色辉光
+            // 2c 本体加色辉光 + 前缘白热（领先刃）
             Main.spriteBatch.Draw(tex, pivot, null, Color.White * MalachiteMelee.SlashArtGlowAlpha,
                 _th[n - 1], origin, _sc[n - 1], SpriteEffects.None, 0f);
+            Main.spriteBatch.Draw(tex, pivot, null, Color.White * (MalachiteMelee.SlashArtGlowAlpha * 1.6f),
+                _th[n - 1], origin, _sc[n - 1] * 1.06f, SpriteEffects.None, 0f);
 
             // 2d 满形闪：落位帧整条曳光高亮一拍
             if (_flash > 0)
@@ -265,6 +329,27 @@ namespace 可成长的孔雀翎
                 float fa = 0.6f * _flash / 3f;
                 for (int i = 0; i < _tip.Count - 1; i++)
                     DrawSeg(_tip[i], _tip[i + 1], bandW * 0.8f, Color.White * fa);
+            }
+
+            // 2e 击中反馈：扩散环 + 砍痕闪刃（参考鬼切/镰刀命中反馈）
+            if (_hitFx > 0)
+            {
+                float t = _hitFx / (float)MalachiteMelee.HitFlashFrames; // 1 → 0 衰减
+                float ringR = MalachiteMelee.HitRingMaxR * (1f - t) + 5f;
+                Color rc = Color.Lerp(Color.White, tint, 0.4f) * (0.9f * t);
+                int segs = 14;
+                for (int s = 0; s < segs; s++)
+                {
+                    float a0 = MathHelper.TwoPi * s / segs;
+                    float a1 = MathHelper.TwoPi * (s + 1) / segs;
+                    DrawSeg(_hitPos + new Vector2((float)Math.Cos(a0), (float)Math.Sin(a0)) * ringR,
+                            _hitPos + new Vector2((float)Math.Cos(a1), (float)Math.Sin(a1)) * ringR,
+                            2.5f, rc);
+                }
+                Vector2 hd = _hitDir;
+                DrawSeg(_hitPos - hd * (MalachiteMelee.HitSlashLen * 0.55f),
+                        _hitPos + hd * (MalachiteMelee.HitSlashLen * 0.45f),
+                        3.5f, Color.White * (0.85f * t));
             }
             AdditiveLayer.End();
             return false;
