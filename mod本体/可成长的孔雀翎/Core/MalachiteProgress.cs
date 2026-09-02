@@ -18,9 +18,13 @@ namespace 可成长的孔雀翎
         /// <summary>已击败 Boss 的键集合（键格式："Mod名:类型名" 或 "Vanilla:名称"）。</summary>
         public readonly HashSet<string> DefeatedBosses = new HashSet<string>();
 
+        /// <summary>世界级一次性标记：花下败仗（flower_retry_loss）是否已触发过。</summary>
+        public bool FlowerRetryLossShown = false;
+
         public override void SaveWorldData(TagCompound tag)
         {
             tag["defeatedBosses"] = DefeatedBosses.ToList();
+            tag["flowerRetryLossShown"] = FlowerRetryLossShown;
         }
 
         public override void LoadWorldData(TagCompound tag)
@@ -31,6 +35,7 @@ namespace 可成长的孔雀翎
                 foreach (var key in tag.GetList<string>("defeatedBosses"))
                     DefeatedBosses.Add(key);
             }
+            FlowerRetryLossShown = tag.ContainsKey("flowerRetryLossShown") && tag.GetBool("flowerRetryLossShown");
         }
 
         /// <summary>生成 Boss 的唯一键。</summary>

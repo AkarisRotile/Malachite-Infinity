@@ -222,6 +222,16 @@ namespace 可成长的孔雀翎
                         }
                     }
                     else _draedonCheckTimer = 0;
+                    // 花下败仗（世界级一次性）：达成阶段5后的首个清晨、世纪之花未败且手持柳刃时触发一次。先 show 再置位防重复。
+                    var malachiteProgress = ModContent.GetInstance<MalachiteProgress>();
+                    if (!malachiteProgress.FlowerRetryLossShown
+                        && ProgressSystem.GetStage() >= 5
+                        && !NPC.downedPlantBoss
+                        && Main.dayTime && Main.time <= 60)
+                    {
+                        MalachiteUISystem.ShowDialogGroup("flower_retry_loss", force: true);
+                        malachiteProgress.FlowerRetryLossShown = true;
+                    }
                 }
             }
         }
@@ -250,8 +260,6 @@ namespace 可成长的孔雀翎
             else if (stage >= 6 && stage < 13)
             {
                 pool.AddRange(DialogDatabase.RightClickStage2);
-                if (hasDiscoveredTruth) pool.Add("right_click_stage2_truth");
-                else if (stage >= 8) pool.Add("right_click_stage2_goliath");
             }
             else
             {
@@ -338,37 +346,24 @@ namespace 可成长的孔雀翎
         {
             if (!hasObtainedMalachite || !MalachiteCache.IsMalachiteItem(Player.HeldItem)) return;
 
+            // v2 去灾厄化：不再按灾厄 Boss 名扫描，只保留可可靠判定的原版分支——
+            // 死亡时在场 NPC 类型：世界吞噬者头 / 毁灭者 → 蠕虫组；世纪之花 → 花刺组；
+            // 无匹配且死于岩浆（Player.lavaWet）→ 岩浆组；其余走默认组。
             bool diedToWorm = false;
-            bool diedToProvidence = false;
-            bool diedToExoMechs = false;
-            bool diedToYharon = false;
-
+            bool diedToFlower = false;
             for (int i = 0; i < Main.maxNPCs; i++)
             {
                 NPC npc = Main.npc[i];
-                if (npc.active && (npc.boss || npc.type == NPCID.EaterofWorldsHead))
-                {
-                    if (npc.aiStyle == 6 || npc.aiStyle == 37) diedToWorm = true;
-                    if (npc.ModNPC != null)
-                    {
-                        string name = npc.ModNPC.Name;
-                        if (name.Contains("Scourge") || name.Contains("Devourer") || name.Contains("Deus") || name.Contains("Thanatos") || name.Contains("Wyrm")) diedToWorm = true;
-                        if (name.Contains("Providence")) diedToProvidence = true;
-                        if (name.Contains("Draedon") || name.Contains("Ares") || name.Contains("Artemis") || name.Contains("Apollo") || name.Contains("Thanatos")) diedToExoMechs = true;
-                        if (name.Contains("Yharon")) diedToYharon = true;
-                    }
-                }
+                if (!npc.active) continue;
+                if (npc.type == NPCID.EaterofWorldsHead || npc.type == NPCID.TheDestroyer) diedToWorm = true;
+                if (npc.type == NPCID.Plantera) diedToFlower = true;
             }
 
-            List<string> pool = new List<string>();
-            if (diedToWorm) pool.Add("death_worm");
-            if (diedToProvidence) pool.Add("death_providence");
-            if (diedToExoMechs) pool.Add("death_exo");
-            if (diedToYharon) pool.Add("death_yharon");
+            string selectedId = "death_default";
+            if (diedToWorm) selectedId = "death_worm";
+            else if (diedToFlower) selectedId = "death_yharon";
+            else if (Player.lavaWet) selectedId = "death_providence";
 
-            if (pool.Count == 0) pool.Add("death_default");
-
-            string selectedId = pool[Main.rand.Next(pool.Count)];
             MalachiteUISystem.ShowDialogGroup(selectedId, force: true);
         }
     }

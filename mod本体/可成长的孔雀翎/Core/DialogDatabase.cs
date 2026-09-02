@@ -99,6 +99,7 @@ namespace 可成长的孔雀翎
             RegisterTruthDialogs();
             RegisterDailyDialogs();
             RegisterDeathDialogs();
+            RegisterFlowerEventDialog();
             RegisterMilestoneDialogs();
 
             OrderedGroups = OrderedGroups.OrderBy(g => g.SortOrder).ToList();
@@ -155,22 +156,6 @@ namespace 可成长的孔雀翎
                 "右键对话随机触发", "Trigger right-click dialogue randomly",
                 new[] { (2, "累了吗？"), (0, "交给我，稍微休息一下吧。") },
                 new[] { (2, "Tired?"), (0, "Leave it to me and take a short rest.") });
-
-            Add(
-                "right_click_stage2_truth",
-                "机械造物", "Machinations",
-                CatRightClick, 23,
-                "发现嘉登瘟疫真相后右键对话触发", "Triggered by right-click dialogue after discovering the plague truth",
-                new[] { (3, "冰冷的机械没有灵魂..."), (3, "我会替丛林讨回公道。") },
-                new[] { (3, "Cold machines have no soul..."), (3, "I will claim justice for the jungle with my blade.") });
-
-            Add(
-                "right_click_stage2_goliath",
-                "歌莉娅", "Goliath",
-                CatRightClick, 24,
-                "阶段 8 后未发现真相时右键对话触发", "Triggered by right-click dialogue before the truth is discovered at stage 8+",
-                new[] { (2, "歌莉娅究竟是怎么变成这样的……？"), (0, "我们一定要查出真相。") },
-                new[] { (2, "How exactly did Goliath become like this...?"), (0, "We must find out the truth.") });
 
             // ========== 右键对话：阶段 3 ==========
             Add(
@@ -275,22 +260,22 @@ namespace 可成长的孔雀翎
         {
             Add(
                 "truth_draedon",
-                "瘟疫真相", "Plague Truth",
+                "月下的坦白", "Confession Under the Moon",
                 CatTruth, 50,
-                "阶段 8 后与嘉登同屏时自动触发", "Triggered when Draedon is present at stage 8+",
+                "击败月总后手持孔雀柳刃时触发", "Triggered while holding the Willow Blade after defeating the Moon Lord",
                 new[]
                 {
-                    (1, "这股气息……这种令人作呕的感觉……"),
-                    (1, "原来是你创造了瘟疫！"),
-                    (1, "不可饶恕……"),
-                    (1, "把我的力量发挥到极致吧，我要陪你把这些造物彻底碾碎！")
+                    (2, "……有件事，我一直没敢告诉你。"),
+                    (0, "当年被丢出丛林之后，我其实不是去流浪，是迷路了。"),
+                    (2, "找不到回丛林的路在哪，后来干脆饿晕了。"),
+                    (0, "说出来轻松多了……你不会笑我吧？")
                 },
                 new[]
                 {
-                    (1, "This aura... this sickening feeling..."),
-                    (1, "It was you who created the plague!"),
-                    (1, "Unforgivable..."),
-                    (1, "Unleash my power to the fullest, I will crush these creations with you!")
+                    (2, "...There's something I never had the courage to tell you."),
+                    (0, "After being thrown out of the jungle back then, I wasn't really wandering—I got lost."),
+                    (2, "I couldn't find the way back to the jungle, so eventually I just... fainted from hunger."),
+                    (0, "It feels lighter saying it out loud... You won't laugh at me, will you?")
                 });
         }
 
@@ -409,33 +394,33 @@ namespace 可成长的孔雀翎
                 "death_worm",
                 "死亡·长虫", "Death Worm",
                 CatDeath, 80,
-                "被长直类 Boss 击败后自动触发", "Triggered after being killed by a worm-like boss",
+                "被原版蠕虫类 Boss 击败后触发", "Triggered after being killed by a vanilla worm-type boss",
                 new[] { (3, "可恶的爬虫..."), (3, "一定是因为我们的平台修得还不够长！") },
                 new[] { (3, "Damn reptiles..."), (3, "It must be because our platforms weren't built long enough!") });
 
             Add(
                 "death_providence",
-                "死亡·火球", "Death Providence",
+                "死亡·岩浆", "Death by Lava",
                 CatDeath, 81,
-                "被普罗维登斯击败后自动触发", "Triggered after being killed by Providence",
-                new[] { (4, "好刺眼的光..."), (1, "下次我们还是晚上再来找这颗大火球的麻烦吧。") },
-                new[] { (4, "Such blinding light..."), (1, "Next time, let's mess with this giant fireball at night instead.") });
+                "落入岩浆时死亡触发", "Triggered when dying to lava",
+                new[] { (4, "烫烫烫烫！"), (1, "下次看见岩浆，我们绕远一点，好不好？") },
+                new[] { (4, "Hot hot hot!"), (1, "Next time we see lava, can we just take the long way around?") });
 
             Add(
                 "death_exo",
-                "死亡·机械", "Death Exo Mechs",
+                "死亡·坠落", "Death by Falling",
                 CatDeath, 82,
-                "被星流巨械击败后自动触发", "Triggered after being killed by Exo Mechs",
-                new[] { (3, "这不公平！"), (1, "凭什么他只要在椅子上坐着，我们却要在枪林弹雨里到处乱窜？") },
-                new[] { (3, "It's not fair!"), (1, "Why does he get to sit in a chair while we run for our lives in a hail of bullets?") });
+                "高处坠落死亡触发", "Triggered when dying from a long fall",
+                new[] { (3, "……原来这里的重力，是很认真的。"), (1, "下次跳下去之前，记得先放个缓冲平台。") },
+                new[] { (3, "...So gravity here is serious business."), (1, "Next time, let's put a buffer platform down before we jump.") });
 
             Add(
                 "death_yharon",
-                "死亡·大鸟", "Death Yharon",
+                "死亡·花刺", "Death by Thorn",
                 CatDeath, 83,
-                "被犽戎击败后自动触发", "Triggered after being killed by Yharon",
-                new[] { (4, "好烫好烫..."), (1, "这只大鸟的龙卷风也太密集了吧！") },
-                new[] { (4, "So hot, so hot..."), (1, "This big bird's tornadoes are way too dense!") });
+                "被世纪之花击败时触发", "Triggered when killed by Plantera",
+                new[] { (4, "……又是那朵花！"), (2, "下次，我们一定会打赢她的。") },
+                new[] { (4, "...That flower again!"), (2, "Next time, we'll definitely beat her.") });
 
             Add(
                 "death_default",
@@ -444,6 +429,32 @@ namespace 可成长的孔雀翎
                 "死亡时随机触发", "Triggered randomly on death",
                 new[] { (1, "啊...这下要掉不少钱了。"), (1, "你出门前把钱存进猪猪存钱罐了吗？") },
                 new[] { (1, "Ah... we're going to drop a lot of coins."), (1, "Did you put your money in the Piggy Bank before we left?") });
+        }
+
+        /// <summary>花下败仗：达成阶段5后的首个清晨、世纪之花未败且手持柳刃时触发一次（世界级一次性）。</summary>
+        private static void RegisterFlowerEventDialog()
+        {
+            Add(
+                "flower_retry_loss",
+                "花下败仗", "Lost to the Flower",
+                CatDaily, 55,
+                "达成阶段5后的首个清晨、尚未击败世纪之花且手持柳刃时触发一次", "Triggered once at the first dawn after stage 5 while Plantera is undefeated and the Willow Blade is held",
+                new[]
+                {
+                    (0, "……我回来了。"),
+                    (3, "抱歉，没跟你说一声就自己跑去了。"),
+                    (2, "我又没打赢那朵臭花……"),
+                    (0, "她把我拎出来的时候还说：小孩子别在别人家里乱逛。"),
+                    (2, "下次我们一起去，好不好？")
+                },
+                new[]
+                {
+                    (0, "...I'm back."),
+                    (3, "Sorry, I went off on my own without telling you."),
+                    (2, "I went after that stinky flower again... and lost."),
+                    (0, "As she tossed me out, she said: kids shouldn't wander around someone else's home."),
+                    (2, "Next time, let's go together, okay?")
+                });
         }
 
         private static void RegisterMilestoneDialogs()
