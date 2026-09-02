@@ -49,6 +49,9 @@ namespace 可成长的孔雀翎
         /// <summary>额外定格帧（如满月终结的收势）。</summary>
         public int ExtraHold = 0;
 
+        private static bool _dbgOkShown = false;
+        private static bool _dbgErrShown = false;
+
         private int _age = 0;
         private int _flash = 0; // 满形闪余量（过冲峰值那帧起亮，随后逐帧衰减）
         private int _hitFx = 0; // 击中反馈帧余量（扩散环 + 砍痕闪刃）
@@ -294,9 +297,33 @@ namespace 可成长的孔雀翎
 
         public override bool PreDraw(ref Color lightColor)
         {
-            if (Projectile.owner < 0 || Projectile.owner >= Main.maxPlayers) return false;
+            // v5.5：不再 End/Begin 换批次——所有特效画进引擎自身批次（正常层同批），杜绝"换批次后整体不可见"。
+            // 一次性自检：管线首次运行时在聊天栏提示（便于实机确认），异常只报一次。
+            try
+            {
+                DrawCore(ref lightColor);
+                if (!_dbgOkShown)
+                {
+                    _dbgOkShown = true;
+                    Main.NewText("[近战特效] 拖尾/弧光管线已运行 (v5.5)", MalachitePalette.GreenBright);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!_dbgErrShown)
+                {
+                    _dbgErrShown = true;
+                    Main.NewText("[近战特效] 绘制异常: " + ex.Message, MalachitePalette.DangerRed);
+                }
+            }
+            return false;
+        }
+
+        private void DrawCore(ref Color lightColor)
+        {
+            if (Projectile.owner < 0 || Projectile.owner >= Main.maxPlayers) return;
             Player owner = Main.player[Projectile.owner];
-            if (owner == null || !owner.active || _th.Count == 0) return false;
+            if (owner == null || !owner.active || _th.Count == 0) return;
 
             Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
             Vector2 origin = new Vector2(0f, MalachiteMelee.SlashArtPivotY); // 挥动圆心 = 最左像素
@@ -319,7 +346,6 @@ namespace 可成长的孔雀翎
                 : 1f;
             float edgeW = Math.Max(3f, reachBase * MalachiteMelee.SlashEdgeWidth);
             float bandW = Math.Max(5f, reachBase * MalachiteMelee.SlashBandWidth);
-            AdditiveLayer.Begin();
 
             // 2a 挥动路径弧光（v5.3）：双层扇形带 = 彩色主带 + 嵌套白热芯带
             //     采样走爆发曲线的真实刃迹（与刃身同一条曲线，杜绝拖尾与刃身脱节）
@@ -418,8 +444,6 @@ namespace 可成长的孔雀翎
                         _hitPos + hd * (MalachiteMelee.HitSlashLen * 0.45f),
                         3.5f, Color.White * (0.85f * t));
             }
-            AdditiveLayer.End();
-            return false;
         }
     }
 }

@@ -116,14 +116,12 @@ namespace 可成长的孔雀翎
             Vector2 screenPos = Projectile.Center - Main.screenPosition;
             float alpha = 1f - Projectile.alpha / 255f;
 
-            AdditiveLayer.Begin();
             Main.spriteBatch.Draw(tex, screenPos, null, Color.White * (0.55f * alpha), rotation,
                 tex.Size() / 2f, scale, SpriteEffects.None, 0f);
             // 中心光点
             Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null,
                 MalachitePalette.GreenBright * (0.8f * alpha), 0f,
                 new Vector2(0.5f), 6f, SpriteEffects.None, 0f);
-            AdditiveLayer.End();
 
             return false;
         }

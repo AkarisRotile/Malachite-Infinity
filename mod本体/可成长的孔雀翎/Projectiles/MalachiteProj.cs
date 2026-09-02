@@ -105,7 +105,6 @@ namespace 可成长的孔雀翎
             bool stealth = IsStealthStrike;
             Color main = stealth ? MalachitePalette.AccentGold : MalachitePalette.PrimaryGreen;
 
-            AdditiveLayer.Begin();
 
             // 1) 残影连成轨迹（透明度沿旧位置递减）
             for (int i = 0; i < Projectile.oldPos.Length; i++)
@@ -134,7 +133,6 @@ namespace 可成长的孔雀翎
             Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, MalachitePalette.White * 0.5f, dir.ToRotation(),
                 new Vector2(0f, 0.5f), new Vector2(38f, 2f), SpriteEffects.None, 0f);
 
-            AdditiveLayer.End();
             return false;
         }
     }

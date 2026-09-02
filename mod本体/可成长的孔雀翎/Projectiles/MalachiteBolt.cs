@@ -97,7 +97,6 @@ namespace 可成长的孔雀翎
             Vector2 texCenter = tex.Size() / 2f;
             Vector2 screenPos = Projectile.Center - Main.screenPosition;
 
-            AdditiveLayer.Begin();
 
             // 1) 残影连成光带（沿旧位置，透明度递减）
             for (int i = 0; i < Projectile.oldPos.Length; i++)
@@ -128,7 +127,6 @@ namespace 可成长的孔雀翎
             Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, MalachitePalette.White * 0.55f, dir.ToRotation(),
                 new Vector2(0f, 0.5f), new Vector2(100f, 2.5f), SpriteEffects.None, 0f);
 
-            AdditiveLayer.End();
             return false;
         }
 
