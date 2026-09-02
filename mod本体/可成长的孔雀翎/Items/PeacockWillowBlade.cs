@@ -1,3 +1,12 @@
+// 代码来源与合规署名：
+// - 攻击行为范式参考（思路学习 + 自主实现，未复制源码）：
+//   CalamityModPublic（Azafure, LLC 专有许可，官方允许作为开发参考）——
+//   Items/Weapons/Rogue/Malachite.cs：潜伏可用时将普攻替换为多弹扇形齐射并消耗潜伏值；
+//   攻击频率随潜伏状态变化；右键作为独立替代动作。
+//   https://github.com/CalamityTeam/CalamityModPublic
+// - 本文件为自主实现：齐射数量/角度/伤害由"阶段 + 天赋（星图 Sigil）"驱动，
+//   弹幕全部为本模组自建（MalachiteProj/Bolt/OrbitingMalachiteProj），数值曲线独立设计，
+//   与官方实现仅在"行为范式"层面相似（例如默认 3 发 ±6.5° 扇形与官方一致，其余随进度扩展）。
 using System;
 using System.Collections.Generic;
 using Terraria;

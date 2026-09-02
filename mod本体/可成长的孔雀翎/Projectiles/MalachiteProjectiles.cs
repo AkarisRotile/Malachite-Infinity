@@ -1,3 +1,11 @@
+// 代码来源与合规署名：
+// 本文件为过渡兼容层（GlobalProjectile）：运行时（软引用）识别并附加规则到
+// 灾厄 Malachite 弹幕（Proj/Bolt/Stealth）与本模组浮游剑阵等，用于统一潜伏/免疫/词缀逻辑。
+// 参考：CalamityModPublic（Azafure, LLC 专有许可，官方允许作为开发参考）
+//   Projectiles/Rogue/MalachiteProj.cs、MalachiteBolt.cs、MalachiteStealth.cs
+//   https://github.com/CalamityTeam/CalamityModPublic
+// 注：IsNativeBossProj 联动（灾厄 Boss 拳/斩弹幕）已按决策 D5 废弃，待阶段 3 清理。
+// 其余（浮游剑阵、月总激光接管等）为本模组/原版逻辑的自主实现。
 using System;
 using Terraria;
 using Terraria.ID;

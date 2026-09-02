@@ -1,3 +1,12 @@
+// 代码来源与合规署名：
+// 本文件为过渡兼容层（GlobalItem），仅服务于灾厄原版武器 "Malachite"
+// （运行时按 模组名:类名 识别，无编译期依赖，灾厄缺失时整层不生效）。
+// 攻击逻辑本身仍由灾厄官方代码执行（Items/Weapons/Rogue/Malachite.cs：
+// 普攻 MalachiteProj / 右键 MalachiteBolt / 潜伏 MalachiteStealth），
+// 本模组仅叠加：右键对话入口、成长/天赋 tooltip、进度数值加成。
+// 参考：CalamityModPublic（Azafure, LLC 专有许可，官方允许作为开发参考）
+//   Items/Weapons/Rogue/Malachite.cs — https://github.com/CalamityTeam/CalamityModPublic
+// 其余内容为本模组机制的自主实现。
 using System;
 using System.Collections.Generic;
 using Terraria;

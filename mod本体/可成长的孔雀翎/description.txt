@@ -58,3 +58,9 @@ V1.5.3+（脱离灾厄重构阶段）：
   https://github.com/hocha113/CalamityOverhaul
 - CalamityEntropy（社区开源）：机制拓展参考
   https://github.com/hocha113/CalamityEntropy
+
+孔雀柳刃（本模组独立武器）攻击行为参考（合规署名，思路学习 + 自主实现）：
+- Items/Weapons/Rogue/Malachite.cs：潜伏齐射替换普攻并消耗潜伏值、攻速随潜伏状态变化、
+  右键独立替代动作 —— 行为范式参考；弹幕、角度数量曲线与数值均为本模组自主设计。
+- Projectiles/Rogue/MalachiteProj.cs / MalachiteBolt.cs：弹幕残影与拖尾 Dust 范式参考。
+

@@ -1,3 +1,7 @@
+// 本文件为自主实现（无外部参考源码）。
+// 潜伏判定与标记统一经 StealthSystem 封装（灾厄在场读写灾厄数据，缺失走自建值）；
+// 灾厄内容仅做运行时探测（如 Draedon 彩蛋 TryFind），无编译期依赖。
+// 天赋（星图 Sigil）触发逻辑、对话系统与存档均为本模组自设计。
 using System;
 using System.Collections.Generic;
 using System.Linq;
