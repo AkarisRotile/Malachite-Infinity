@@ -175,6 +175,9 @@ namespace 可成长的孔雀翎
         public const int DashImmuneTime = 26;
         public const int DashCooldown = 24;
 
+        /// <summary>按住近战键时的出刀间隔（帧；越小越密）。</summary>
+        public const int SwingInterval = 9;
+
         /// <summary>精准层数的总伤害倍率（1 + 层数×单层）。</summary>
         public static float PrecisionDamageMult(int stacks) => 1f + Math.Min(PrecisionMaxStacks, Math.Max(0, stacks)) * PrecisionDamagePerStack;
 

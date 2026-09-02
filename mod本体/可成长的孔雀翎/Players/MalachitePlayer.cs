@@ -48,6 +48,7 @@ namespace 可成长的孔雀翎
         // ===== 近战形态原型态（ES 流 MVP，非存档字段）=====
         public int MeleeComboStep = 0;
         public int MeleeLastStrikeTick = -100;
+        public int MeleeFireCd = 0;
         public int PrecisionStacks = 0;
         public int PrecisionTimer = 0;
         public int LastDashTick = -100;
@@ -158,11 +159,21 @@ namespace 可成长的孔雀翎
                 float regen = InCombat ? 0.35f : 1.5f;
                 stealthValue = Math.Min(StealthSystem.NativeMaxStealth, stealthValue + regen);
 
-                // ===== 近战形态原型（ES 流 MVP）：状态维护 + 双击方向=突进斩 =====
+                // ===== 近战形态原型（ES 流 MVP）：状态维护 + 独立按键出刀 + 双击方向=突进斩 =====
                 if (MalachiteMelee.IsPrototypeActive(Player))
                 {
                     if (PrecisionTimer > 0 && --PrecisionTimer == 0)
                         PrecisionStacks = 0;
+
+                    // 按住「近战攻击」键 = 连段出刀（间隔 SwingInterval，设置里可改键）
+                    if (MeleeFireCd > 0) MeleeFireCd--;
+                    var meleeKey = MalachiteKeybinds.MeleeKey;
+                    if (meleeKey != null && meleeKey.Current && MeleeFireCd <= 0)
+                    {
+                        int wd = Player.HeldItem != null ? Player.GetWeaponDamage(Player.HeldItem) : 32;
+                        MalachiteMelee.TryMeleeStrike(Player, Player.GetSource_Misc("MalachiteMelee"), wd, 4f);
+                        MeleeFireCd = MalachiteMelee.SwingInterval;
+                    }
 
                     bool l = Player.controlLeft;
                     bool r = Player.controlRight;
@@ -184,6 +195,7 @@ namespace 可成长的孔雀翎
                 }
                 else
                 {
+                    MeleeFireCd = 0;
                     _prevCtrlLeft = false;
                     _prevCtrlRight = false;
                 }
