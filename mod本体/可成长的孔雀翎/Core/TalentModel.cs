@@ -5,9 +5,20 @@ namespace 可成长的孔雀翎
 {
     // =====================================================================
     // 阶段 2 新天赋模型（v1）—— 纯加点化：五轨小节点 + 技能点经济。
-    // 本文件为「独立化基座」：先落地数据结构与求值常量，武器/UI 接入在后续波次。
+    // v2 切换（M3）后：旧 20 节点星图整体退役，本文件为唯一效果出处。
     // 设计依据：写法\阶段2_天赋星图重设计.md（v1 决策 D6~D12，用户 2026-09-02 拍板）
     // =====================================================================
+
+    /// <summary>
+    /// 潜伏标记接口（拆除旧全局弹幕接管类后的落点）：
+    /// 由本模组自己的弹幕类（MalachiteProj/Bolt/Domain）实现，
+    /// StealthSystem 经此接口读写潜伏状态，不再需要全局接管类。
+    /// </summary>
+    public interface IStealthStrikeProjectile
+    {
+        /// <summary>该弹幕实例是否为潜伏攻击（金羽状态）。</summary>
+        bool IsStealthStrike { get; set; }
+    }
 
     /// <summary>五轨小节点。</summary>
     public enum TrackKind
@@ -47,9 +58,9 @@ namespace 可成长的孔雀翎
     {
         public const int TrackCount = 5;
 
-        /// <summary>切换开关：false=旧模型（ActiveSigils/旧星图）照常；置 true 即退役旧模型、启用 v2 迁移与新 UI。</summary>
-        // 用 readonly 而非 const：避免 const-false 造成 CS0162 死代码噪音；切换波次改为 true。
-        public static readonly bool V2Active = false;
+        /// <summary>v2 切换开关（M3 已置 true）：旧 20 节点星图模型已整体退役，v2 迁移与加点 UI 生效。</summary>
+        // 用 readonly 而非 const：若将来回退可避免 CS0162 死代码噪音。
+        public static readonly bool V2Active = true;
 
         /// <summary>每级默认效果（由 Formula 计算）。</summary>
         public static class Effects

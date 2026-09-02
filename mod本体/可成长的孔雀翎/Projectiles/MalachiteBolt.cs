@@ -23,9 +23,12 @@ namespace 可成长的孔雀翎
     /// - CWR 三层配色思想：白芯 / 主色发光 / 外晕，additive
     /// - 命中：穿透耗尽时爆炸 + 火花
     /// </summary>
-    public class MalachiteBolt : ModProjectile
+    public class MalachiteBolt : ModProjectile, IStealthStrikeProjectile
     {
         public override string Texture => "可成长的孔雀翎/Textures/MalachiteBoltTex";
+
+        // 潜伏标记（v2 起本类自持；当前射线不主动发潜伏，字段保留供后续攻击模式接入）
+        public bool IsStealthStrike { get; set; }
 
         private bool _initialized = false;
         private bool _exploded = false;

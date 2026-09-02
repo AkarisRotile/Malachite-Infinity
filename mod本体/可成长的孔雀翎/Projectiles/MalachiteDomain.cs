@@ -19,9 +19,12 @@ namespace 可成长的孔雀翎
     /// 效果：范围内敌人减速；范围内玩家获得迅捷；边缘金色光尘流；收尾光尘迸发。
     /// 视觉：additive 法阵贴图（旋转 + 呼吸缩放）+ 中心光点。
     /// </summary>
-    public class MalachiteDomain : ModProjectile
+    public class MalachiteDomain : ModProjectile, IStealthStrikeProjectile
     {
         public override string Texture => "可成长的孔雀翎/Textures/MalachiteDomainTex";
+
+        // 领域非攻击弹幕，潜伏标记无害保留（统一接口，避免类型特判）
+        public bool IsStealthStrike { get; set; }
 
         /// <summary>领域半径（像素）。</summary>
         public const float Radius = 320f;

@@ -5,8 +5,10 @@ using Terraria.ModLoader;
 namespace 可成长的孔雀翎
 {
     /// <summary>
-    /// 潜伏攻击系统（阶段 2 独立化后）：纯自建，不再读写灾厄玩家/弹幕数据。
-    /// 潜伏值由 MalachitePlayer 维护；弹幕标记经本模组 GlobalProjectile 字段记录。
+    /// 潜伏攻击系统（阶段 2 独立化后）：纯自建，不再读写灾厄玩家/弹幕数据，
+    /// 也不再依赖旧的全局弹幕接管类 —— 弹幕潜伏标记改由
+    /// <see cref="IStealthStrikeProjectile"/> 接口（本模组弹幕类各自实现）承担。
+    /// 潜伏值由 MalachitePlayer 维护。
     /// </summary>
     public static class StealthSystem
     {
@@ -30,13 +32,26 @@ namespace 可成长的孔雀翎
         public static bool StealthStrikeAvailable(Player player)
             => GetStealth(player) >= NativeMaxStealth * StrikeThreshold;
 
-        /// <summary>该弹幕是否为潜伏攻击。</summary>
+        /// <summary>
+        /// 该弹幕是否为潜伏攻击。只认本模组弹幕（实现 IStealthStrikeProjectile 者），
+        /// 其余类型一律 false —— 标记/读取失败均静默，无全局接管兜底。
+        /// </summary>
         public static bool IsStealthStrike(Projectile proj)
-            => proj.GetGlobalProjectile<MalachiteGlobalProjectile>().isStealthStrike;
+            => proj?.ModProjectile is IStealthStrikeProjectile strike && strike.IsStealthStrike;
 
-        /// <summary>将弹幕标记为潜伏攻击。</summary>
-        public static void MarkStealthStrike(Projectile proj)
-            => proj.GetGlobalProjectile<MalachiteGlobalProjectile>().isStealthStrike = true;
+        /// <summary>
+        /// 将弹幕标记为潜伏攻击。仅对实现 <see cref="IStealthStrikeProjectile"/> 的弹幕生效，
+        /// 其它类型静默忽略（返回 false 表示未标记成功）。
+        /// </summary>
+        public static bool MarkStealthStrike(Projectile proj)
+        {
+            if (proj?.ModProjectile is IStealthStrikeProjectile strike)
+            {
+                strike.IsStealthStrike = true;
+                return true;
+            }
+            return false;
+        }
 
         /// <summary>消耗一次潜伏攻击所需的潜伏值。</summary>
         public static void ConsumeStrike(Player player)

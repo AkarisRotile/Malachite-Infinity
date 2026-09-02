@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
@@ -12,41 +11,12 @@ namespace 可成长的孔雀翎
     {
         // 记录所有 Boss 击杀（任意模组），供进度系统与技能点体系使用。
         // 仅在服务器/单机侧登记（MP 客户端不写），保证世界档权威一致。
+        // （v2 起已删除旧"瘟疫降级"PostAI 段：灾厄瘟疫减益路径整体退役）
         public override void OnKill(NPC npc)
         {
             if (npc.boss && Main.netMode != NetmodeID.MultiplayerClient)
             {
                 MalachiteProgress.Instance.RegisterDefeat(npc);
-            }
-        }
-
-        public override void PostAI(NPC npc)
-        {
-            if (!ProgressSystem.DownedPlaguebringer)
-            {
-                int plagueBuff = MalachiteCache.PlagueBuff;
-                if (plagueBuff != 0 && npc.HasBuff(plagueBuff))
-                {
-                    bool anyMalachite = false;
-                    for (int i = 0; i < Main.maxPlayers; i++)
-                    {
-                        if (Main.player[i].active && !Main.player[i].dead && MalachiteCache.IsMalachiteItem(Main.player[i].HeldItem))
-                        {
-                            anyMalachite = true;
-                            break;
-                        }
-                    }
-
-                    if (anyMalachite)
-                    {
-                        int buffIndex = npc.FindBuffIndex(plagueBuff);
-                        if (buffIndex != -1)
-                        {
-                            npc.DelBuff(buffIndex);
-                            npc.AddBuff(BuffID.Poisoned, 180);
-                        }
-                    }
-                }
             }
         }
     }

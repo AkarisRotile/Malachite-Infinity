@@ -20,9 +20,12 @@ namespace 可成长的孔雀翎
     /// 外观：翠绿羽刃像素画（刀尖朝右），飞行时拖出细碎光尘；潜伏态金色光尘。
     /// 逻辑：直线飞行（阶段4起无重力）、命中附加中毒。
     /// </summary>
-    public class MalachiteProj : ModProjectile
+    public class MalachiteProj : ModProjectile, IStealthStrikeProjectile
     {
         public override string Texture => "可成长的孔雀翎/Textures/MalachiteProjTex";
+
+        // 潜伏标记（v2 起本类自持，经 IStealthStrikeProjectile 供 StealthSystem 读写）
+        public bool IsStealthStrike { get; set; }
 
         public override void SetStaticDefaults()
         {
@@ -56,8 +59,8 @@ namespace 可成长的孔雀翎
             if (Projectile.velocity.LengthSquared() > 0.1f)
                 Projectile.rotation = Projectile.velocity.ToRotation() + MathHelper.PiOver2;
 
-            // Dust 光尘拖尾（引擎原生粒子，限流）
-            bool stealth = StealthSystem.IsStealthStrike(Projectile);
+            // Dust 光尘拖尾（引擎原生粒子，限流）；潜伏色读自身接口属性
+            bool stealth = IsStealthStrike;
             Color dustColor = stealth ? MalachitePalette.AccentGold : MalachitePalette.PrimaryGreen;
             if (Main.rand.NextBool(2) && EffectLimiterSystem.CanSpawnEffect(1, 90))
             {
@@ -99,7 +102,7 @@ namespace 可成长的孔雀翎
         {
             Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
             Vector2 texCenter = tex.Size() / 2f;
-            bool stealth = StealthSystem.IsStealthStrike(Projectile);
+            bool stealth = IsStealthStrike;
             Color main = stealth ? MalachitePalette.AccentGold : MalachitePalette.PrimaryGreen;
 
             AdditiveLayer.Begin();

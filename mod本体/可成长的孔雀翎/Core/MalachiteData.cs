@@ -95,17 +95,9 @@ namespace 可成长的孔雀翎
         public static Color LightSeaGreen = Color.LightSeaGreen;
     }
 
-    public static class CalamityBossDowned
-    {
-        // 灾厄在场时读其存档；灾厄缺失时返回 false（阶段2重锚时替换为本地进度）
-        public static bool Cryogen() => ProgressSystem.DownedCryogen;
-        public static bool AstrumDeus() => ProgressSystem.DownedAstrumDeus;
-        public static bool Leviathan() => ProgressSystem.DownedLeviathan;
-    }
-
     public static class MalachiteCache
     {
-        // ---- 本模组自建资源（无灾厄也可用，阶段1起优先使用）----
+        // ---- 本模组自建类型缓存（v2 起唯一身份来源；灾厄字段已按阶段 2 摘除）----
 
         /// <summary>本模组独立武器类型（孔雀柳刃）。</summary>
         public static int NativeMalachiteItem => ModContent.ItemType<PeacockWillowBlade>();
@@ -116,56 +108,8 @@ namespace 可成长的孔雀翎
         /// <summary>本模组潜伏射线弹幕类型。</summary>
         public static int NativeBoltType => ModContent.ProjectileType<MalachiteBolt>();
 
-        /// <summary>统一判断：是否为孔雀翎武器（自建武器 或 灾厄 Malachite 武器）。</summary>
+        /// <summary>统一判断：是否为孔雀柳刃（本模组武器；灾厄孔雀翎已互不干涉）。</summary>
         public static bool IsMalachiteItem(Item item)
-        {
-            if (item == null) return false;
-            if (item.type == NativeMalachiteItem) return true;
-            return MalachiteItem != 0 && item.type == MalachiteItem;
-        }
-
-        /// <summary>是否为普攻飞刀弹幕（本模组 或 灾厄 MalachiteProj）。</summary>
-        public static bool IsNormalProj(Projectile proj)
-            => proj != null && (proj.type == NativeProjType || (ProjType != 0 && proj.type == ProjType));
-
-        /// <summary>是否为潜伏射线弹幕（本模组 或 灾厄 MalachiteBolt）。</summary>
-        public static bool IsBolt(Projectile proj)
-            => proj != null && (proj.type == NativeBoltType || (BoltType != 0 && proj.type == BoltType));
-
-        private static int _proj = -1;
-        public static int ProjType => _proj == -1 ? (_proj = ModContent.TryFind<ModProjectile>("CalamityMod", "MalachiteProj", out var p) ? p.Type : 0) : _proj;
-
-        private static int _bolt = -1;
-        public static int BoltType => _bolt == -1 ? (_bolt = ModContent.TryFind<ModProjectile>("CalamityMod", "MalachiteBolt", out var p) ? p.Type : 0) : _bolt;
-
-        private static int _stealth = -1;
-        public static int StealthType => _stealth == -1 ? (_stealth = ModContent.TryFind<ModProjectile>("CalamityMod", "MalachiteStealth", out var p) ? p.Type : 0) : _stealth;
-
-        private static int _plague = -1;
-        public static int PlagueBuff => _plague == -1 ? (_plague = ModContent.TryFind<ModBuff>("CalamityMod", "Plague", out var b) ? b.Type : 0) : _plague;
-
-        private static int _malachiteItem = -1;
-        public static int MalachiteItem => _malachiteItem == -1 ? (_malachiteItem = ModContent.TryFind<ModItem>("CalamityMod", "Malachite", out var i) ? i.Type : 0) : _malachiteItem;
-
-        private static int _glacialState = -1;
-        public static int GlacialState => _glacialState == -1 ? (_glacialState = ModContent.TryFind<ModBuff>("CalamityMod", "GlacialState", out var b) ? b.Type : 0) : _glacialState;
-
-        private static int _holyFlames = -1;
-        public static int HolyFlames => _holyFlames == -1 ? (_holyFlames = ModContent.TryFind<ModBuff>("CalamityMod", "HolyFlames", out var b) ? b.Type : BuffID.OnFire) : _holyFlames;
-
-        private static int _brimstoneFlames = -1;
-        public static int BrimstoneFlames => _brimstoneFlames == -1 ? (_brimstoneFlames = ModContent.TryFind<ModBuff>("CalamityMod", "BrimstoneFlames", out var b) ? b.Type : BuffID.ShadowFlame) : _brimstoneFlames;
-
-        private static int _fist1 = -1;
-        public static int Fist1 => _fist1 == -1 ? (_fist1 = ModContent.TryFind<ModProjectile>("CalamityMod", "SupremeCataclysmFist", out var p) ? p.Type : 0) : _fist1;
-
-        private static int _fist2 = -1;
-        public static int Fist2 => _fist2 == -1 ? (_fist2 = ModContent.TryFind<ModProjectile>("CalamityMod", "CataclysmFist", out var p) ? p.Type : 0) : _fist2;
-
-        private static int _slash1 = -1;
-        public static int Slash1 => _slash1 == -1 ? (_slash1 = ModContent.TryFind<ModProjectile>("CalamityMod", "SupremeCatastropheSlash", out var p) ? p.Type : 0) : _slash1;
-
-        private static int _slash2 = -1;
-        public static int Slash2 => _slash2 == -1 ? (_slash2 = ModContent.TryFind<ModProjectile>("CalamityMod", "CatastropheSlash", out var p) ? p.Type : 0) : _slash2;
+            => item != null && item.type == NativeMalachiteItem;
     }
 }
