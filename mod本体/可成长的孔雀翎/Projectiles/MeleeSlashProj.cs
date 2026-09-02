@@ -58,6 +58,8 @@ namespace 可成长的孔雀翎
         // 历史（拖尾用）：挥扫帧的角度与贴图比例、刃尖世界坐标（外缘曳光带）
         private readonly List<float> _th = new List<float>();
         private readonly List<float> _sc = new List<float>();
+        private readonly List<float> _sx = new List<float>(); // 段位贴图变形：沿刃长拉伸
+        private readonly List<float> _sy = new List<float>(); // 厚度压扁
         private readonly List<Vector2> _tip = new List<Vector2>();
 
         private static int Gather => MalachiteMelee.SwingGatherFrames;
@@ -159,9 +161,16 @@ namespace 可成长的孔雀翎
 
                 float scaleFactor = Kind == MalachiteMelee.MoveKind.Step ? MalachiteMelee.StepScale(step) : ScaleMult;
                 float artScale = reachBase * pulse * scaleFactor / MalachiteMelee.SlashArtWidth;
+                // 段位贴图变形：X=沿刃长拉伸 / Y=厚度压扁；挥扫过冲处变形最大（甩感）
+                float sx = Kind == MalachiteMelee.MoveKind.Step ? MalachiteMelee.StepStretchX(step) : 1.05f;
+                float sy = Kind == MalachiteMelee.MoveKind.Step ? MalachiteMelee.StepSquashY(step) : 0.90f;
+                sx *= 1f + 0.10f * c;
+                sy *= 1f - 0.06f * c;
                 _th.Add(theta);
                 _sc.Add(artScale);
-                _tip.Add(owner.Center + new Vector2((float)Math.Cos(theta), (float)Math.Sin(theta)) * (artScale * MalachiteMelee.SlashArtWidth));
+                _sx.Add(sx);
+                _sy.Add(sy);
+                _tip.Add(owner.Center + new Vector2((float)Math.Cos(theta), (float)Math.Sin(theta)) * (artScale * MalachiteMelee.SlashArtWidth * sx));
                 TrimHistory();
             }
             else
@@ -193,6 +202,8 @@ namespace 可成长的孔雀翎
             {
                 _th.RemoveAt(0);
                 _sc.RemoveAt(0);
+                _sx.RemoveAt(0);
+                _sy.RemoveAt(0);
                 _tip.RemoveAt(0);
             }
         }
@@ -299,7 +310,7 @@ namespace 可成长的孔雀翎
             // 1) 正常层：当前刃体贴图本体（亮度倍率调暗，防过曝）
             Main.spriteBatch.Draw(tex, pivot, null,
                 new Color(MalachiteMelee.SlashArtBrightness, MalachiteMelee.SlashArtBrightness, MalachiteMelee.SlashArtBrightness) * MalachiteMelee.SlashArtAlpha,
-                _th[n - 1], origin, _sc[n - 1], SpriteEffects.None, 0f);
+                _th[n - 1], origin, new Vector2(_sx[n - 1], _sy[n - 1]) * _sc[n - 1], SpriteEffects.None, 0f);
 
             // 2) 加色层：挥动路径弧光 + 残影 + 曳光带 + 本体辉光 + 满形闪 + 击中反馈
             float reachBase = MalachiteMelee.StepReach(step) * ReachMult;
@@ -317,7 +328,7 @@ namespace 可成长的孔雀翎
                 SwingArc(step, out float theta0, out float _unusedEnd);
                 _ = _unusedEnd;
                 float theta1 = _th[n - 1];
-                float R = _sc[n - 1] * MalachiteMelee.SlashArtWidth;
+                float R = _sc[n - 1] * MalachiteMelee.SlashArtWidth * _sx[n - 1];
                 if (Math.Abs(theta1 - theta0) > 0.001f && R > 2f)
                 {
                     int steps = 24;
@@ -359,7 +370,8 @@ namespace 可成长的孔雀翎
                 float age = i / (float)Math.Max(1, n - 2);
                 float a = MalachiteMelee.SlashVisualAlpha * (0.05f + 0.75f * age * age) * holdFade;
                 Color gc = Color.Lerp(tint, Color.White, Math.Clamp(age * 1.5f, 0f, 1f));
-                Main.spriteBatch.Draw(tex, pivot, null, gc * a, _th[i], origin, _sc[i] * MathHelper.Lerp(0.9f, 1.03f, age), SpriteEffects.None, 0f);
+                Main.spriteBatch.Draw(tex, pivot, null, gc * a, _th[i], origin,
+                    new Vector2(_sx[i], _sy[i]) * _sc[i] * MathHelper.Lerp(0.9f, 1.03f, age), SpriteEffects.None, 0f);
             }
 
             // 2b2 刃尖曳光带：宽软层 + 细亮层（新段近白热）
@@ -374,9 +386,9 @@ namespace 可成长的孔雀翎
 
             // 2c 本体加色辉光 + 前缘白热（领先刃）
             Main.spriteBatch.Draw(tex, pivot, null, Color.White * MalachiteMelee.SlashArtGlowAlpha,
-                _th[n - 1], origin, _sc[n - 1], SpriteEffects.None, 0f);
+                _th[n - 1], origin, new Vector2(_sx[n - 1], _sy[n - 1]) * _sc[n - 1], SpriteEffects.None, 0f);
             Main.spriteBatch.Draw(tex, pivot, null, Color.White * (MalachiteMelee.SlashArtGlowAlpha * 1.6f),
-                _th[n - 1], origin, _sc[n - 1] * 1.06f, SpriteEffects.None, 0f);
+                _th[n - 1], origin, new Vector2(_sx[n - 1], _sy[n - 1]) * _sc[n - 1] * 1.06f, SpriteEffects.None, 0f);
 
             // 2d 满形闪：落位帧整条曳光高亮一拍
             if (_flash > 0)

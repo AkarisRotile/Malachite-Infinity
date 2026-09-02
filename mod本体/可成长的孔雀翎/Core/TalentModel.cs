@@ -203,6 +203,12 @@ namespace 可成长的孔雀翎
         public static float StepEndRad(int step, int dir) { float r = StepEndRadL[Math.Clamp(step, 0, 2)]; return dir >= 0 ? r : MathHelper.Pi - r; }
         public static float StepReach(int step) => StepReachArr[Math.Clamp(step, 0, 2)];
         public static float StepScale(int step) => StepScaleArr[Math.Clamp(step, 0, 2)];
+        /// <summary>每段刃身贴图 X 向拉伸倍率（沿刃长：段位越大越"甩长"）。</summary>
+        private static readonly float[] StepStretchXArr = { 1.05f, 1.12f, 1.22f };
+        /// <summary>每段刃身贴图 Y 向压扁倍率（厚度：段位越大越"薄利"）。</summary>
+        private static readonly float[] StepSquashYArr = { 0.88f, 0.82f, 0.72f };
+        public static float StepStretchX(int step) => StepStretchXArr[Math.Clamp(step, 0, 2)];
+        public static float StepSquashY(int step) => StepSquashYArr[Math.Clamp(step, 0, 2)];
 
         // ---- 挥动特效贴图（用户自绘 MeleeSlash.png，已裁透明边；挥动圆心=贴图最左像素）----
         /// <summary>裁剪后贴图宽度（px）：画到挥动半径的比例基准（reach / SlashArtWidth）。</summary>
@@ -282,7 +288,8 @@ namespace 可成长的孔雀翎
                 player.velocity.X = dir * 6f; // 第三段小突进（手感：连段有"推出去"感）
 
             SpawnSlash(player, source, dmg, kb, dir, step);
-            SoundEngine.PlaySound(step == 2 ? SoundID.Item71 : SoundID.Item15, player.Center);
+            // 出刀音阶随段位爬升：段1/2/3 音调递进，段3 换重音（手感递进）
+            SoundEngine.PlaySound(step == 2 ? SoundID.Item71 with { Pitch = 0.05f } : SoundID.Item15 with { Pitch = step * 0.12f }, player.Center);
         }
 
         /// <summary>双击方向触发突进斩：位移 + 短暂无敌 + 大号斩击。</summary>
