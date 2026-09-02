@@ -146,15 +146,15 @@ namespace 可成长的孔雀翎
     }
 
     /// <summary>
-    /// 近战形态原型（参考《苍翼：混沌效应》ES 手感，MVP）：
-    /// LMB 节奏连段（3 段循环）→ 命中叠「精准」层数（每层 +10%，上限 +50%）→
+    /// 近战形态原型（参考《苍翼：混沌效应》ES 手感，MVP→v3 顿挫化）：
+    /// F 键节奏连段（3 段循环，两段式变速挥动+停驻）→ 命中叠「精准」层数（每层 +10%，上限 +50%）→
     /// 双击方向键 = 突进斩（短暂无敌帧）。
     /// 手感调顺后再作为「技」页大节点接入；当前 MeleePrototypeOn=true 时手持即启用原型。
     /// 输入/手感参数集中于此，方便实机微调。
     /// </summary>
     public static class MalachiteMelee
     {
-        /// <summary>原型总开关：true=手持柳刃时左键为近战连段（调试期），false=退回远程（接入技页后由节点状态接管）。</summary>
+        /// <summary>原型总开关：true=手持柳刃时按 F 键（可改键）为近战连段（调试期），false=退回远程（接入技页后由节点状态接管）。</summary>
         public static readonly bool PrototypeOn = true;
 
         // ---- 连段 ----
@@ -175,12 +175,26 @@ namespace 可成长的孔雀翎
         public const int DashImmuneTime = 26;
         public const int DashCooldown = 24;
 
-        /// <summary>按住近战键时的出刀间隔（帧；越小越密）。</summary>
-        public const int SwingInterval = 9;
+        /// <summary>按住近战键时的出刀间隔（帧；含活跃+停驻，越大越"一顿一顿"，顿挫节奏）。</summary>
+        public const int SwingInterval = 16;
 
-        // ---- 挥动弧线（每段独立，参考 ES 连段与 CalamityEntropy BaseSwing 变速挥舞）----
-        /// <summary>单次挥动总时长（帧）。</summary>
-        public const int SwingTicks = 9;
+        // ---- 挥动曲线 v3（顿挫手感；参考 ES 节奏 + CalamityEntropy BaseSwing 两段式变速，自主实现）----
+        /// <summary>单次挥动"活跃"帧数（此段内角度推进，越短越急促）。</summary>
+        public const int SwingTicks = 12;
+        /// <summary>挥到终点后的停驻帧数（收势停顿 = 顿挫感来源之一）。</summary>
+        public const int SwingHoldTicks = 2;
+        /// <summary>加速段占比（约前 45% 加速伸刃，之后急刹收刃）。</summary>
+        public const float SwingPhase = 0.45f;
+        /// <summary>曲线幂：越大起手越慢、中段越"甩"、收尾越急刹（2.0~3.0 之间微调）。</summary>
+        public const float SwingEasePower = 2.2f;
+        // 刃长脉动系数：起手稍收 → 中段伸够（"够着打"）→ 收势回落
+        public const float ReachStartK = 0.92f;
+        public const float ReachPeakK = 1.10f;
+        public const float ReachEndK = 0.96f;
+        // 刃身大小脉动系数（同理，挥速峰值处最大）
+        public const float ScaleStartK = 0.98f;
+        public const float ScalePeakK = 1.14f;
+        public const float ScaleEndK = 1.0f;
         // 弧度语义：0 = 朝前水平；负值 = 向上（屏幕 Y 向下，sin<0 即上）。
         private static readonly float[] StepStartRadL = { 0.45f, -0.55f, 0.25f };
         private static readonly float[] StepEndRadL = { -1.05f, 1.0f, -1.25f };
@@ -194,11 +208,13 @@ namespace 可成长的孔雀翎
         public static float StepReach(int step) => StepReachArr[Math.Clamp(step, 0, 2)];
         public static float StepScale(int step) => StepScaleArr[Math.Clamp(step, 0, 2)];
 
-        // ---- 斩击占位贴图（泰拉刃 Projectile_132）绘制参数 ----
+        // ---- 斩击占位贴图（泰拉之刃本体·物品贴图，运行时引用原版资源）绘制参数 ----
         /// <summary>斩击整体透明度（0~1）。</summary>
         public const float SlashVisualAlpha = 0.95f;
         /// <summary>斩击显示尺寸倍率（与半径联乘，改大即整体更大）。</summary>
-        public const float SlashVisualScale = 1.8f;
+        public const float SlashVisualScale = 2.2f;
+        /// <summary>刃身朝向校正角（弧度，相对径向的偏移；实机方向不对就改 ±Pi/2 一档档试）。</summary>
+        public const float SlashBladeArtOffset = MathHelper.PiOver2;
 
         /// <summary>精准层数的总伤害倍率（1 + 层数×单层）。</summary>
         public static float PrecisionDamageMult(int stacks) => 1f + Math.Min(PrecisionMaxStacks, Math.Max(0, stacks)) * PrecisionDamagePerStack;
