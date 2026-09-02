@@ -63,10 +63,6 @@ namespace 可成长的孔雀翎
                 int stage = ProgressSystem.GetStage();
                 int extraPierce = stage >= 13 ? 6 : (stage >= 8 ? 4 : (stage >= 4 ? 2 : 1));
                 Projectile.penetrate += extraPierce;
-
-                // 天赋 0（轻灵）：射线伤害 +15%
-                if (player.active && player.GetModPlayer<MalachitePlayer>().ActiveSigils.Contains(0))
-                    Projectile.damage = (int)(Projectile.damage * 1.15f);
             }
 
             // 渐显（灾厄范式：alpha 255 → 100）
@@ -135,9 +131,8 @@ namespace 可成长的孔雀翎
 
         public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone)
         {
+            // 基础：中毒
             target.AddBuff(BuffID.Poisoned, 180);
-            if (ProgressSystem.DownedPlaguebringer && MalachiteCache.PlagueBuff != 0)
-                target.AddBuff(MalachiteCache.PlagueBuff, 180);
 
             // 命中火花（参考 CWR：圆周迸发粒子）
             if (EffectLimiterSystem.CanSpawnEffect(3, 110))
