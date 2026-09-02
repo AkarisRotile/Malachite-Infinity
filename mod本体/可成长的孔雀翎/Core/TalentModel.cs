@@ -226,13 +226,17 @@ namespace 可成长的孔雀翎
         /// <summary>轨迹采样上限（帧，= 拖尾残影/曳光带长度）。</summary>
         public const int SlashTrailMax = 12;
 
-        // ---- 挥动路径特效（v5.1：参考鬼切斩痕弧光 / 特莉波卡镰刀大弧光：扇形路径填充 + 外缘锐线）----
-        /// <summary>路径扇内半径比例（相对刃尖外半径，贴图近端薄）。</summary>
-        public const float PathInnerK = 0.30f;
-        /// <summary>路径扇填充透明度（加色，低值防过曝）。</summary>
-        public const float PathGlowAlpha = 0.16f;
+        // ---- 挥动路径特效（v5.3：按爆发曲线真实路径重采样，双层扇形弧光带——彩色主带 + 嵌套白热芯带，参考特莉波卡镰刀历史采样条带与鬼切斩痕带）----
+        /// <summary>路径扇内半径比例（相对刃尖外半径，弧光带内缘）。</summary>
+        public const float PathInnerK = 0.45f;
+        /// <summary>主带透明度（加色；白天亮背景也需可见）。</summary>
+        public const float PathGlowAlpha = 0.45f;
+        /// <summary>白热芯带内半径比例（嵌套在彩色带内侧更窄更亮）。</summary>
+        public const float PathWhiteInnerK = 0.62f;
+        /// <summary>白热芯带透明度。</summary>
+        public const float PathWhiteAlpha = 0.40f;
         /// <summary>路径外缘锐亮线宽度比例（相对刃尖外半径）。</summary>
-        public const float PathEdgeWidth = 0.06f;
+        public const float PathEdgeWidth = 0.05f;
 
         // ---- 击中反馈（v5.1：参考鬼切/镰刀命中：扩散环 + 砍痕闪刃 + 白热爆点）----
         /// <summary>命中反馈持续帧数。</summary>

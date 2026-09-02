@@ -310,34 +310,44 @@ namespace 可成长的孔雀翎
             float bandW = Math.Max(5f, reachBase * MalachiteMelee.SlashBandWidth);
             AdditiveLayer.Begin();
 
-            // 2a 挥动路径弧光：扇形路径填充（从挥扫起点铺到当前刃位，越近前缘越白热）
-            //     参考鬼切斩痕弧光(外缘=刀尖轨迹锐利/内缘软融)与特莉波卡镰刀大弧光扫痕
+            // 2a 挥动路径弧光（v5.3）：双层扇形带 = 彩色主带 + 嵌套白热芯带
+            //     采样走爆发曲线的真实刃迹（与刃身同一条曲线，杜绝拖尾与刃身脱节）
+            //     参考：特莉波卡镰刀 oldRots 历史条带(彩色带叠白亮内芯) / 鬼切外缘=刀尖轨迹锐利
             {
                 SwingArc(step, out float theta0, out float _unusedEnd);
                 _ = _unusedEnd;
                 float theta1 = _th[n - 1];
                 float R = _sc[n - 1] * MalachiteMelee.SlashArtWidth;
-                float Ri = R * MalachiteMelee.PathInnerK;
-                if (Math.Abs(theta1 - theta0) > 0.001f)
+                if (Math.Abs(theta1 - theta0) > 0.001f && R > 2f)
                 {
-                    int steps = 18;
-                    float dAng = Math.Abs(theta1 - theta0) / steps;
-                    float wid = Math.Max(3f, dAng * R * 0.92f);
+                    int steps = 24;
+                    // 当前挥扫进度 → 用同一条 BurstCurve 重采样整条已走路径（拖尾贴合刃迹）
+                    float pNow = Math.Clamp((_age - Gather) / (float)Math.Max(1, MalachiteMelee.SwingSweepFrames), 0f, 1f);
+                    float sliceW = Math.Abs(theta1 - theta0) / steps;
+                    float segW = Math.Max(3f, sliceW * R * 0.95f);
+                    float coreW = Math.Max(2f, sliceW * R * 0.55f);
                     Vector2 prevOuter = Vector2.Zero;
                     bool hasPrev = false;
                     for (int k = 0; k <= steps; k++)
                     {
-                        float tk = k / (float)steps;
-                        float th = MathHelper.Lerp(theta0, theta1, tk);
+                        float s = pNow * k / (float)steps;
+                        float th = MathHelper.Lerp(theta0, theta1, BurstCurve(s));
                         Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
-                        Vector2 inP = owner.Center + dd * Ri;
-                        Vector2 outP = owner.Center + dd * R;
-                        float ga = MalachiteMelee.PathGlowAlpha * (0.2f + 0.8f * tk) * holdFade;
-                        Color gc = Color.Lerp(tint, Color.White, Math.Clamp(tk * 1.7f, 0f, 1f));
-                        DrawSeg(inP, outP, wid, gc * ga);
+                        float tk = k / (float)steps;
+                        // 主带：内缘 PathInnerK → 外缘 R；旧段偏 tint、前缘白热
+                        float ga = MalachiteMelee.PathGlowAlpha * (0.30f + 0.70f * tk) * holdFade;
+                        Color gc = Color.Lerp(tint, Color.White, Math.Clamp(tk * 1.8f, 0f, 1f));
+                        DrawSeg(owner.Center + dd * (R * MalachiteMelee.PathInnerK), owner.Center + dd * R,
+                            segW, gc * ga);
+                        // 白热芯带：嵌套更窄更亮（参考特莉波卡白亮内芯）
+                        float wa = MalachiteMelee.PathWhiteAlpha * (0.5f + 0.5f * tk) * holdFade;
+                        DrawSeg(owner.Center + dd * (R * MalachiteMelee.PathWhiteInnerK), owner.Center + dd * (R * 0.98f),
+                            coreW, Color.White * wa);
+                        // 外缘锐线：刀尖轨迹（最亮边）
                         if (hasPrev)
-                            DrawSeg(prevOuter, outP, Math.Max(2f, reachBase * MalachiteMelee.PathEdgeWidth), gc * (ga * 1.9f));
-                        prevOuter = outP;
+                            DrawSeg(prevOuter, owner.Center + dd * R,
+                                Math.Max(2f, reachBase * MalachiteMelee.PathEdgeWidth), gc * Math.Min(1f, ga * 2.4f));
+                        prevOuter = owner.Center + dd * R;
                         hasPrev = true;
                     }
                 }
