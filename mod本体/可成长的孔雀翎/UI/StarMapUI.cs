@@ -93,11 +93,11 @@ namespace 可成长的孔雀翎
         private readonly Dictionary<int, Action<StarMapUIState>> _pageBuilders =
             new Dictionary<int, Action<StarMapUIState>>();
 
-        // 页签文案（中/英）
+        // 页签文案（中/英）——「力/技」呼应：力=属性加点，技=技能占位
         private static readonly (string zh, string en)[] PageTitles =
         {
-            ("属性加点", "Attributes"),
-            ("技", "Skills")
+            ("力", "Power"),
+            ("技", "Skill")
         };
 
         public StarMapUIState()
@@ -209,21 +209,8 @@ namespace 可成长的孔雀翎
                 _tabButtons.Add(tab);
             }
 
-            // —— 左右翻页箭头 ——
-            UIPanel prevArrow = MakeButton("◀", 0.9f, MalachitePalette.TextLight, PrevPage);
-            prevArrow.Left.Set(16, 0f);
-            prevArrow.Top.Set(44, 0f);
-            _mainPanel.Append(prevArrow);
-
-            UIPanel nextArrow = MakeButton("▶", 0.9f, MalachitePalette.TextLight, NextPage);
-            nextArrow.Left.Set(-44, 1f);
-            nextArrow.Top.Set(44, 0f);
-            _mainPanel.Append(nextArrow);
-
-            _pageLabel = MakeCenteredText("", 0.8f, MalachitePalette.TextDim);
-            _pageLabel.Top.Set(80, 0f);
-            _mainPanel.Append(_pageLabel);
-
+            // 说明：用户反馈 ◀/▶ 翻页箭头观感不佳已移除；
+            // 翻页仍由顶栏页签触发（GoToPage），编程翻页接口 Next/Prev/GoToPage 保留给后续"技"页使用。
             // —— 页面内容挂载区 ——
             _pageHost = new UIElement();
             _pageHost.Left.Set(10, 0f);
