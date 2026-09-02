@@ -111,6 +111,13 @@ namespace 可成长的孔雀翎
 
         public override bool Shoot(Player player, EntitySource_ItemUse_WithAmmo source, Vector2 position, Vector2 velocity, int type, int damage, float knockback)
         {
+            // ===== 近战形态原型（ES 流 MVP）：原型开启时左键普攻改为连段斩击（右键对话不受影响）=====
+            if (MalachiteMelee.IsPrototypeActive(player))
+            {
+                MalachiteMelee.TryMeleeStrike(player, source, damage, knockback);
+                return false;
+            }
+
             try
             {
                 int stage = ProgressSystem.GetStage();

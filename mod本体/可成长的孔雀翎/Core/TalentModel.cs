@@ -1,5 +1,10 @@
 using System;
 using Terraria;
+using Terraria.ID;
+using Terraria.Audio;
+using Terraria.ModLoader;
+using Terraria.DataStructures;
+using Microsoft.Xna.Framework;
 
 namespace 可成长的孔雀翎
 {
@@ -137,6 +142,105 @@ namespace 可成长的孔雀翎
             };
             _ = stage; // 阶段门槛规则在 CanPurchase / 数值表波次统一接入
             return p;
+        }
+    }
+
+    /// <summary>
+    /// 近战形态原型（参考《苍翼：混沌效应》ES 手感，MVP）：
+    /// LMB 节奏连段（3 段循环）→ 命中叠「精准」层数（每层 +10%，上限 +50%）→
+    /// 双击方向键 = 突进斩（短暂无敌帧）。
+    /// 手感调顺后再作为「技」页大节点接入；当前 MeleePrototypeOn=true 时手持即启用原型。
+    /// 输入/手感参数集中于此，方便实机微调。
+    /// </summary>
+    public static class MalachiteMelee
+    {
+        /// <summary>原型总开关：true=手持柳刃时左键为近战连段（调试期），false=退回远程（接入技页后由节点状态接管）。</summary>
+        public static readonly bool PrototypeOn = true;
+
+        // ---- 连段 ----
+        /// <summary>连段断链窗口（帧）：超过则重置回第 1 段。</summary>
+        public const int ComboBreakWindow = 26;
+        /// <summary>连段段数。</summary>
+        public const int ComboMaxSteps = 3;
+
+        // ---- 精准被动 ----
+        public const int PrecisionMaxStacks = 5;
+        public const float PrecisionDamagePerStack = 0.10f; // 每层 +10%
+        public const int PrecisionDuration = 180;           // 层数持续时间（帧）
+
+        // ---- 突进斩 ----
+        /// <summary>双击判定的最大间隔（帧）。</summary>
+        public const int DoubleTapWindow = 14;
+        public const float DashSpeed = 17f;
+        public const int DashImmuneTime = 26;
+        public const int DashCooldown = 24;
+
+        /// <summary>精准层数的总伤害倍率（1 + 层数×单层）。</summary>
+        public static float PrecisionDamageMult(int stacks) => 1f + Math.Min(PrecisionMaxStacks, Math.Max(0, stacks)) * PrecisionDamagePerStack;
+
+        /// <summary>原型是否在玩家身上生效（手持孔雀柳刃）。</summary>
+        public static bool IsPrototypeActive(Player player)
+            => PrototypeOn && player != null && MalachiteCache.IsMalachiteItem(player.HeldItem);
+
+        /// <summary>LMB 近战连段触发（每段发一次斩击；第三段带小突进）。</summary>
+        public static void TryMeleeStrike(Player player, IEntitySource source, float damage, float knockback)
+        {
+            var mp = player.GetModPlayer<MalachitePlayer>();
+            int now = (int)Main.GameUpdateCount;
+            if (now - mp.MeleeLastStrikeTick > ComboBreakWindow)
+                mp.MeleeComboStep = 0;
+
+            int step = mp.MeleeComboStep % ComboMaxSteps;
+            mp.MeleeComboStep = (step + 1) % ComboMaxSteps;
+            mp.MeleeLastStrikeTick = now;
+
+            int dir = player.direction != 0 ? player.direction : 1;
+            float mult = PrecisionDamageMult(mp.PrecisionStacks);
+            int dmg = Math.Max(1, (int)(damage * mult));
+            float kb = Math.Max(1f, knockback + step);
+
+            Vector2 pos = player.Center + new Vector2(dir * (26f + step * 6f), -8f);
+            if (step == 2)
+                player.velocity.X = dir * 6f; // 第三段小突进（手感：连段有"推出去"感）
+
+            SpawnSlash(player, source, pos, dmg, kb, dir);
+            SoundEngine.PlaySound(step == 2 ? SoundID.Item71 : SoundID.Item15, player.Center);
+        }
+
+        /// <summary>双击方向触发突进斩：位移 + 短暂无敌 + 大号斩击。</summary>
+        public static void DoDash(Player player, int dir)
+        {
+            var mp = player.GetModPlayer<MalachitePlayer>();
+            int now = (int)Main.GameUpdateCount;
+            if (now - mp.LastDashTick < DashCooldown) return;
+
+            mp.LastDashTick = now;
+            player.velocity.X = dir * DashSpeed;
+            player.immuneTime = Math.Max(player.immuneTime, DashImmuneTime);
+
+            int weaponDmg = player.HeldItem != null ? player.GetWeaponDamage(player.HeldItem) : 32;
+            int dmg = Math.Max(8, (int)(weaponDmg * (1f + 0.15f * mp.PrecisionStacks)));
+            var src = player.GetSource_ItemUse(player.HeldItem);
+            Vector2 pos = player.Center + new Vector2(dir * 34f, -4f);
+            SpawnSlash(player, src, pos, dmg, 6f, dir);
+            SoundEngine.PlaySound(SoundID.Item71 with { Volume = 0.8f, Pitch = 0.1f }, player.Center);
+            for (int i = 0; i < 6 && EffectLimiterSystem.CanSpawnEffect(1, 60); i++)
+            {
+                Dust d = Dust.NewDustPerfect(player.Center + Main.rand.NextVector2Circular(10f, 10f),
+                    DustID.TintableDust, new Vector2(dir * Main.rand.NextFloat(1f, 4f), Main.rand.NextFloat(-2f, 2f)),
+                    0, MalachitePalette.AccentGold, Main.rand.NextFloat(0.8f, 1.4f));
+                d.noGravity = true;
+                d.fadeIn = 0.4f;
+            }
+        }
+
+        /// <summary>生成斩击弹幕（MVP 扇面 hitbox + 视觉）。</summary>
+        private static void SpawnSlash(Player player, IEntitySource source, Vector2 pos, int damage, float knockback, int dir)
+        {
+            int idx = Projectile.NewProjectile(source, pos, Vector2.Zero,
+                ModContent.ProjectileType<MeleeSlashProj>(), damage, knockback, player.whoAmI);
+            if (idx >= 0 && idx < Main.maxProjectiles && Main.projectile[idx].ModProjectile is MeleeSlashProj sp)
+                sp.SlashDir = dir;
         }
     }
 }

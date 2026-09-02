@@ -45,6 +45,17 @@ namespace 可成长的孔雀翎
         public int SkillPoints = 0;
         public int[] TrackLevel = new int[TalentCatalog.TrackCount];
 
+        // ===== 近战形态原型态（ES 流 MVP，非存档字段）=====
+        public int MeleeComboStep = 0;
+        public int MeleeLastStrikeTick = -100;
+        public int PrecisionStacks = 0;
+        public int PrecisionTimer = 0;
+        public int LastDashTick = -100;
+        private bool _prevCtrlLeft = false;
+        private bool _prevCtrlRight = false;
+        private int _lastLeftTapTick = -100;
+        private int _lastRightTapTick = -100;
+
         private int _draedonCheckTimer = 0;
 
         public override void SaveData(TagCompound tag)
@@ -146,6 +157,36 @@ namespace 可成长的孔雀翎
             {
                 float regen = InCombat ? 0.35f : 1.5f;
                 stealthValue = Math.Min(StealthSystem.NativeMaxStealth, stealthValue + regen);
+
+                // ===== 近战形态原型（ES 流 MVP）：状态维护 + 双击方向=突进斩 =====
+                if (MalachiteMelee.IsPrototypeActive(Player))
+                {
+                    if (PrecisionTimer > 0 && --PrecisionTimer == 0)
+                        PrecisionStacks = 0;
+
+                    bool l = Player.controlLeft;
+                    bool r = Player.controlRight;
+                    int now = (int)Main.GameUpdateCount;
+                    if (l && !_prevCtrlLeft)
+                    {
+                        if (now - _lastLeftTapTick <= MalachiteMelee.DoubleTapWindow)
+                            MalachiteMelee.DoDash(Player, -1);
+                        _lastLeftTapTick = now;
+                    }
+                    if (r && !_prevCtrlRight)
+                    {
+                        if (now - _lastRightTapTick <= MalachiteMelee.DoubleTapWindow)
+                            MalachiteMelee.DoDash(Player, 1);
+                        _lastRightTapTick = now;
+                    }
+                    _prevCtrlLeft = l;
+                    _prevCtrlRight = r;
+                }
+                else
+                {
+                    _prevCtrlLeft = false;
+                    _prevCtrlRight = false;
+                }
             }
 
             if (Main.GameUpdateCount % 30 == 0)
