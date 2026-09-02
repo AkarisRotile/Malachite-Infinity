@@ -86,7 +86,7 @@ namespace 可成长的孔雀翎
                             if (!modPlayer.hasObtainedMalachite)
                             {
                                 modPlayer.hasObtainedMalachite = true;
-                                modPlayer.currentMalachiteStage = PeacockModifier.GetMalachiteStage();
+                                modPlayer.currentMalachiteStage = ProgressSystem.GetStage();
                                 modPlayer.hasGreetedLogin = true;
                                 modPlayer.dailyChatTimer = 18000;
                                 

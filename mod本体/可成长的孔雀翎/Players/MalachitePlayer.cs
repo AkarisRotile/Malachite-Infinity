@@ -209,8 +209,8 @@ namespace 可成长的孔雀翎
             if (moonSphereCooldown > 0) moonSphereCooldown--;
             if (moonPortalCooldown > 0) moonPortalCooldown--;
 
-            // 无灾厄模式：自建潜伏值回复（战斗中慢速、脱战快速）
-            if (!CalamityCompat.Loaded && Main.myPlayer == Player.whoAmI)
+            // 自建潜伏值回复（战斗中慢速、脱战快速；独立化后恒用自建潜伏）
+            if (Main.myPlayer == Player.whoAmI)
             {
                 float regen = InCombat ? 0.35f : 1.5f;
                 stealthValue = Math.Min(StealthSystem.NativeMaxStealth, stealthValue + regen);
@@ -228,7 +228,7 @@ namespace 可成长的孔雀翎
                     }
                 }
 
-                int stage = PeacockModifier.GetMalachiteStage();
+                int stage = ProgressSystem.GetStage();
                 int maxSwords = stage >= 13 ? 24 : 16;
                 int spawnCountThisFrame = 0;
                 while (activeSwords < maxSwords && pendingNormalSwords > 0 && spawnCountThisFrame < 2)
@@ -254,7 +254,7 @@ namespace 可成长的孔雀翎
                 }
             }
 
-            int maxCap = MalachiteTalents.GetMaxCapacity(PeacockModifier.GetMalachiteStage());
+            int maxCap = MalachiteTalents.GetMaxCapacity(ProgressSystem.GetStage());
             int currentCost = 0;
             foreach (int s in ActiveSigils)
             {
@@ -281,7 +281,7 @@ namespace 可成长的孔雀翎
                 if (hasNative || hasCalamity)
                 {
                     hasObtainedMalachite = true;
-                    currentMalachiteStage = PeacockModifier.GetMalachiteStage();
+                    currentMalachiteStage = ProgressSystem.GetStage();
                     hasGreetedLogin = true;
                     dailyChatTimer = 18000;
                 }
@@ -289,7 +289,7 @@ namespace 可成长的孔雀翎
 
             if (hasObtainedMalachite)
             {
-                int actualStage = PeacockModifier.GetMalachiteStage();
+                int actualStage = ProgressSystem.GetStage();
                 if (actualStage > currentMalachiteStage)
                 {
                     for (int i = currentMalachiteStage + 1; i <= actualStage; i++)
@@ -334,7 +334,7 @@ namespace 可成长的孔雀翎
         {
             if (!MalachiteCache.IsMalachiteItem(Player.HeldItem)) return;
 
-            int stage = PeacockModifier.GetMalachiteStage();
+            int stage = ProgressSystem.GetStage();
             bool isStealthHit = StealthSystem.IsStealthStrike(proj);
             bool hasTrack = ActiveSigils.Contains(1);
             bool hasPierce = ActiveSigils.Contains(2);
@@ -754,7 +754,7 @@ namespace 可成长的孔雀翎
 
         public void TriggerRightClickDialogue()
         {
-            int stage = PeacockModifier.GetMalachiteStage();
+            int stage = ProgressSystem.GetStage();
             List<string> pool = new List<string>();
 
             if (stage < 6)

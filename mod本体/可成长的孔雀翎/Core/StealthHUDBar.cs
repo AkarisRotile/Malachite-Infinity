@@ -9,9 +9,8 @@ using Microsoft.Xna.Framework.Graphics;
 namespace 可成长的孔雀翎
 {
     /// <summary>
-    /// 无灾厄模式的自建潜伏条 HUD（ModSystem 通过 UI 层绘制）。
-    /// 手持孔雀翎且未死亡时，在玩家头顶上方显示潜伏值；满 25% 后亮绿提示可触发潜伏攻击。
-    /// 有灾厄时灾厄自身会显示其潜伏条，本 HUD 自动隐藏。
+    /// 自建潜伏条 HUD（ModSystem 通过 UI 层绘制）。
+    /// 手持孔雀柳刃且未死亡时，在玩家头顶上方显示潜伏值；满 25% 后亮绿提示可触发潜伏攻击。
     /// </summary>
     public class StealthHUDBar : ModSystem
     {
@@ -34,7 +33,6 @@ namespace 可成长的孔雀翎
         {
             Player player = Main.LocalPlayer;
             if (player == null || player.dead || Main.gameMenu) return;
-            if (CalamityCompat.Loaded) return;          // 灾厄在场时使用灾厄自身的潜伏条
             if (!MalachiteCache.IsMalachiteItem(player.HeldItem)) return;
 
             var mp = player.GetModPlayer<MalachitePlayer>();

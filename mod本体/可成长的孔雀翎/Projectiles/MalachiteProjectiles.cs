@@ -125,7 +125,7 @@ namespace 可成长的孔雀翎
                 return; 
             }
 
-            int stage = PeacockModifier.GetMalachiteStage();
+            int stage = ProgressSystem.GetStage();
             int t = projectile.type;
             bool isMalachiteProj = MalachiteCache.ProjType != 0 && t == MalachiteCache.ProjType;
             bool isMalachiteBolt = MalachiteCache.BoltType != 0 && t == MalachiteCache.BoltType;
@@ -304,7 +304,7 @@ namespace 可成长的孔雀翎
             Player player = Main.player[projectile.owner];
             MalachitePlayer mp = player.GetModPlayer<MalachitePlayer>();
             
-            int stage = PeacockModifier.GetMalachiteStage();
+            int stage = ProgressSystem.GetStage();
             int t = projectile.type;
 
             if (stage >= 4 && (t == MalachiteCache.ProjType || t == MalachiteCache.BoltType || t == ModContent.ProjectileType<OrbitingMalachiteProj>()))
@@ -372,7 +372,7 @@ namespace 可成长的孔雀翎
 
             Lighting.AddLight(Projectile.Center, 0.24f, 0.86f, 0.52f); // 主色 #3DDC84 归一化
 
-            int stage = PeacockModifier.GetMalachiteStage();
+            int stage = ProgressSystem.GetStage();
             int maxCharge = stage >= 13 ? 15 : 25; 
 
             if (Projectile.ai[0] < maxCharge) 

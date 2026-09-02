@@ -841,7 +841,7 @@ namespace 可成长的孔雀翎
                     currentCost += MalachiteTalents.Sigils[s].Cost;
             }
 
-            int maxCap = MalachiteTalents.GetMaxCapacity(PeacockModifier.GetMalachiteStage());
+            int maxCap = MalachiteTalents.GetMaxCapacity(ProgressSystem.GetStage());
             if (currentCost + sigil.Cost > maxCap)
             {
                 ShowWarning(MalachiteData.Loc("[灵力枯竭] 刻印容量已达极限！", "[Spirit Depleted] Sigil capacity has reached its limit!"));
@@ -903,7 +903,7 @@ namespace 可成长的孔雀翎
                     currentCost += MalachiteTalents.Sigils[s].Cost;
             }
 
-            int maxCap = MalachiteTalents.GetMaxCapacity(PeacockModifier.GetMalachiteStage());
+            int maxCap = MalachiteTalents.GetMaxCapacity(ProgressSystem.GetStage());
             if (CapacityText != null)
             {
                 CapacityText.SetText(MalachiteData.Loc($"灵力占用: {currentCost} / {maxCap}", $"Spirit Cost: {currentCost} / {maxCap}"));
