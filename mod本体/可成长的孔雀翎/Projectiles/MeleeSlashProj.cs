@@ -1,8 +1,15 @@
 // 代码来源与合规署名：
 // - 手感设计参考（非代码参考）：《苍翼：混沌效应》(© ARC SYSTEM WORKS / 91Act) 角色 ES——
-//   高频连段叠"精准"被动、冲刺斩带无敌帧等操作体验；本文件为自主实现，无任何源码或素材复用。
+//   高频连段叠"精准"被动、冲刺斩带无敌帧等操作体验。
+// - 挥动动画思路参考（学习后自主实现，未直接复制源码）：
+//   CalamityEntropy（社区开源）Core\BaseSwing.cs —— 手持弹幕绕玩家作"加速-减速"弧线挥舞、
+//   长度/缩放脉动与历史位置拖影的做法；以及 Content\Items\Donator\TlipocasScythe.cs 的
+//   交替挥向（swing 0/1 交替）设计。
+//   https://github.com/hocha113/CalamityEntropy
+// - 斩击贴图占位：泰拉之刃(Terra Blade)光束 Projectile_132（运行时引用原版资源）。
 // 本文件为自主实现。
 using System;
+using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
@@ -12,27 +19,32 @@ using Microsoft.Xna.Framework.Graphics;
 namespace 可成长的孔雀翎
 {
     /// <summary>
-    /// 近战形态·斩击 hitbox（原型·ES 流 MVP）。
-    /// 短暂存在、无飞行速度；命中目标时给持有者叠「精准」层数；
-    /// 视觉为 additive 扇形刃光（无贴图内容，纯程序绘制）。
+    /// 近战形态·斩击（原型 v2）：绕持有者作"弧线变速挥动"的 hitbox。
+    /// - 每段（SlashStep 0..2）有独立的挥动弧线/半径/大小（数据见 MalachiteMelee.Step*）；
+    /// - 位置每帧沿弧线推进 → 引擎逐帧碰撞即构成"扫过"判定；
+    /// - 绘制：历史位置残影拖尾 + 当前泰拉刃光束贴图（透明度/尺寸常量可调）。
     /// </summary>
     public class MeleeSlashProj : ModProjectile
     {
-        /// <summary>斩击贴图占位 = 泰拉之刃(Terra Blade)光束 Projectile_132（运行时引用原版资源，等同复制）。
-        /// 想换成独立文件时：把该贴图 PNG 放进 Textures\MeleeSlashPlaceholder.png 并改此路径即可。</summary>
         public override string Texture => "Terraria/Images/Projectile_132";
 
-        /// <summary>玩家朝向（1=右 / -1=左）。</summary>
+        /// <summary>连段段数（0..ComboMaxSteps-1）。</summary>
+        public int SlashStep = 0;
+        /// <summary>玩家朝向（1=右 / -1=左），决定挥动弧线镜像。</summary>
         public int SlashDir = 1;
+
+        private int _age = 0;
+        private readonly List<Vector2> _ghostPos = new List<Vector2>();
+        private readonly List<float> _ghostRot = new List<float>();
 
         public override void SetDefaults()
         {
-            Projectile.width = 64;
-            Projectile.height = 36;
+            Projectile.width = 190;
+            Projectile.height = 130;
             Projectile.friendly = true;
             Projectile.tileCollide = false;
             Projectile.penetrate = -1;
-            Projectile.timeLeft = 7;
+            Projectile.timeLeft = 600; // 由 _age 控制生命周期
             Projectile.ignoreWater = true;
             Projectile.DamageType = MindDamageClass.Instance;
             Projectile.usesLocalNPCImmunity = true;
@@ -41,7 +53,49 @@ namespace 可成长的孔雀翎
 
         public override void AI()
         {
-            Projectile.velocity = Vector2.Zero;
+            if (Projectile.owner < 0 || Projectile.owner >= Main.maxPlayers)
+            {
+                Projectile.Kill();
+                return;
+            }
+            Player owner = Main.player[Projectile.owner];
+            if (owner == null || !owner.active || owner.dead)
+            {
+                Projectile.Kill();
+                return;
+            }
+
+            int ticks = MalachiteMelee.SwingTicks;
+            if (_age >= ticks)
+            {
+                Projectile.Kill();
+                return;
+            }
+
+            // 记录上一帧位置做残影
+            if (_ghostPos.Count == 0 || _ghostPos[_ghostPos.Count - 1] != Projectile.Center)
+            {
+                _ghostPos.Add(Projectile.Center);
+                _ghostRot.Add(Projectile.rotation);
+                if (_ghostPos.Count > 12) { _ghostPos.RemoveAt(0); _ghostRot.RemoveAt(0); }
+            }
+
+            // 弧线进度 + 加速-减速缓动（参考 BaseSwing 的变速手感）
+            float t = _age / (float)ticks;
+            float eased = t < 0.5f ? 2f * t * t : 1f - (float)Math.Pow(-2f * t + 2f, 2) / 2f;
+
+            int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
+            float start = MalachiteMelee.StepStartRad(step, SlashDir);
+            float end = MalachiteMelee.StepEndRad(step, SlashDir);
+            float theta = MathHelper.Lerp(start, end, eased);
+
+            float reach = MathHelper.Lerp(MalachiteMelee.StepReach(step) * 0.82f, MalachiteMelee.StepReach(step), eased);
+
+            Vector2 dir = new Vector2((float)Math.Cos(theta), (float)Math.Sin(theta));
+            Vector2 pos = owner.Center + dir * reach - new Vector2(Projectile.width / 2f, Projectile.height / 2f);
+            Projectile.position = pos;
+            Projectile.rotation = theta + MathHelper.PiOver2; // 刃身沿切向
+            _age++;
         }
 
         public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone)
@@ -53,7 +107,6 @@ namespace 可成长的孔雀翎
             mp.PrecisionStacks = Math.Min(MalachiteMelee.PrecisionMaxStacks, mp.PrecisionStacks + 1);
             mp.PrecisionTimer = MalachiteMelee.PrecisionDuration;
 
-            // 命中白闪（打击感，限流）
             if (EffectLimiterSystem.CanSpawnEffect(2, 60))
             {
                 for (int i = 0; i < 3; i++)
@@ -70,22 +123,30 @@ namespace 可成长的孔雀翎
 
         public override bool PreDraw(ref Color lightColor)
         {
-            // 占位贴图绘制：透明度/尺寸常量见 MalachiteMelee（SlashVisualAlpha / SlashVisualScale），可实机微调。
-            float life = MathHelper.Clamp(1f - Projectile.timeLeft / 7f, 0f, 1f); // 0→1 展开
             Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
-            Vector2 center = Projectile.Center - Main.screenPosition;
             Vector2 origin = tex.Size() * 0.5f;
+            Vector2 screenPos = Projectile.Center - Main.screenPosition;
+            int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
+            float baseScale = MalachiteMelee.SlashVisualScale * MalachiteMelee.StepScale(step) * (MalachiteMelee.StepReach(step) / 100f);
 
-            // 朝向 + 小幅弧线摆动，模拟"挥过"的弧迹
-            float rot = (SlashDir >= 0 ? 0f : MathHelper.Pi) + MathHelper.Lerp(-0.38f, 0.38f, life);
-            float alpha = MalachiteMelee.SlashVisualAlpha * MathHelper.Clamp(1.15f - life * 0.85f, 0.15f, 1f);
-            float scale = MalachiteMelee.SlashVisualScale * (0.7f + 0.55f * life);
-
-            Main.spriteBatch.Draw(tex, center, null, Color.White * alpha, rot, origin, scale, SpriteEffects.None, 0f);
-
-            // 微弱 additive 发光层（延续本模组特效风格，透明度同常量缩水）
+            // 残影拖尾（沿旧位置的刃光，逐层变淡）
             AdditiveLayer.Begin();
-            Main.spriteBatch.Draw(tex, center, null, Color.White * (alpha * 0.22f), rot, origin, scale * 1.07f, SpriteEffects.None, 0f);
+            for (int i = 0; i < _ghostPos.Count; i++)
+            {
+                float k = i / (float)Math.Max(1, _ghostPos.Count - 1);
+                float a = 0.10f + 0.22f * k;
+                Main.spriteBatch.Draw(tex, _ghostPos[i] - Main.screenPosition, null, Color.White * (a * MalachiteMelee.SlashVisualAlpha),
+                    _ghostRot[i], origin, baseScale * (0.55f + 0.3f * k), SpriteEffects.None, 0f);
+            }
+            AdditiveLayer.End();
+
+            // 当前刃身
+            float alpha = MalachiteMelee.SlashVisualAlpha;
+            Main.spriteBatch.Draw(tex, screenPos, null, Color.White * alpha, Projectile.rotation, origin, baseScale, SpriteEffects.None, 0f);
+
+            // 微弱核心发光
+            AdditiveLayer.Begin();
+            Main.spriteBatch.Draw(tex, screenPos, null, Color.White * (alpha * 0.25f), Projectile.rotation, origin, baseScale * 1.12f, SpriteEffects.None, 0f);
             AdditiveLayer.End();
             return false;
         }

@@ -178,11 +178,27 @@ namespace 可成长的孔雀翎
         /// <summary>按住近战键时的出刀间隔（帧；越小越密）。</summary>
         public const int SwingInterval = 9;
 
+        // ---- 挥动弧线（每段独立，参考 ES 连段与 CalamityEntropy BaseSwing 变速挥舞）----
+        /// <summary>单次挥动总时长（帧）。</summary>
+        public const int SwingTicks = 9;
+        // 弧度语义：0 = 朝前水平；负值 = 向上（屏幕 Y 向下，sin<0 即上）。
+        private static readonly float[] StepStartRadL = { 0.45f, -0.55f, 0.25f };
+        private static readonly float[] StepEndRadL = { -1.05f, 1.0f, -1.25f };
+        /// <summary>每段挥动半径（px，即攻击范围，越后段越大）。</summary>
+        private static readonly float[] StepReachArr = { 96f, 108f, 128f };
+        /// <summary>每段刃身大小倍率。</summary>
+        private static readonly float[] StepScaleArr = { 1.0f, 1.12f, 1.30f };
+
+        public static float StepStartRad(int step, int dir) { float r = StepStartRadL[Math.Clamp(step, 0, 2)]; return dir >= 0 ? r : MathHelper.Pi - r; }
+        public static float StepEndRad(int step, int dir) { float r = StepEndRadL[Math.Clamp(step, 0, 2)]; return dir >= 0 ? r : MathHelper.Pi - r; }
+        public static float StepReach(int step) => StepReachArr[Math.Clamp(step, 0, 2)];
+        public static float StepScale(int step) => StepScaleArr[Math.Clamp(step, 0, 2)];
+
         // ---- 斩击占位贴图（泰拉刃 Projectile_132）绘制参数 ----
         /// <summary>斩击整体透明度（0~1）。</summary>
-        public const float SlashVisualAlpha = 0.9f;
-        /// <summary>斩击显示尺寸倍率。</summary>
-        public const float SlashVisualScale = 2.8f;
+        public const float SlashVisualAlpha = 0.95f;
+        /// <summary>斩击显示尺寸倍率（与半径联乘，改大即整体更大）。</summary>
+        public const float SlashVisualScale = 1.8f;
 
         /// <summary>精准层数的总伤害倍率（1 + 层数×单层）。</summary>
         public static float PrecisionDamageMult(int stacks) => 1f + Math.Min(PrecisionMaxStacks, Math.Max(0, stacks)) * PrecisionDamagePerStack;
@@ -208,11 +224,10 @@ namespace 可成长的孔雀翎
             int dmg = Math.Max(1, (int)(damage * mult));
             float kb = Math.Max(1f, knockback + step);
 
-            Vector2 pos = player.Center + new Vector2(dir * (26f + step * 6f), -8f);
             if (step == 2)
                 player.velocity.X = dir * 6f; // 第三段小突进（手感：连段有"推出去"感）
 
-            SpawnSlash(player, source, pos, dmg, kb, dir);
+            SpawnSlash(player, source, dmg, kb, dir, step);
             SoundEngine.PlaySound(step == 2 ? SoundID.Item71 : SoundID.Item15, player.Center);
         }
 
@@ -230,8 +245,8 @@ namespace 可成长的孔雀翎
             int weaponDmg = player.HeldItem != null ? player.GetWeaponDamage(player.HeldItem) : 32;
             int dmg = Math.Max(8, (int)(weaponDmg * (1f + 0.15f * mp.PrecisionStacks)));
             var src = player.GetSource_ItemUse(player.HeldItem);
-            Vector2 pos = player.Center + new Vector2(dir * 34f, -4f);
-            SpawnSlash(player, src, pos, dmg, 6f, dir);
+            int step = Math.Clamp(mp.MeleeComboStep % ComboMaxSteps, 0, ComboMaxSteps - 1);
+            SpawnSlash(player, src, dmg, 6f, dir, step);
             SoundEngine.PlaySound(SoundID.Item71 with { Volume = 0.8f, Pitch = 0.1f }, player.Center);
             for (int i = 0; i < 6 && EffectLimiterSystem.CanSpawnEffect(1, 60); i++)
             {
@@ -243,13 +258,16 @@ namespace 可成长的孔雀翎
             }
         }
 
-        /// <summary>生成斩击弹幕（MVP 扇面 hitbox + 视觉）。</summary>
-        private static void SpawnSlash(Player player, IEntitySource source, Vector2 pos, int damage, float knockback, int dir)
+        /// <summary>生成斩击弹幕（绕玩家弧线挥动，见 MeleeSlashProj）。</summary>
+        private static void SpawnSlash(Player player, IEntitySource source, int damage, float knockback, int dir, int step)
         {
-            int idx = Projectile.NewProjectile(source, pos, Vector2.Zero,
+            int idx = Projectile.NewProjectile(source, player.Center, Vector2.Zero,
                 ModContent.ProjectileType<MeleeSlashProj>(), damage, knockback, player.whoAmI);
             if (idx >= 0 && idx < Main.maxProjectiles && Main.projectile[idx].ModProjectile is MeleeSlashProj sp)
+            {
                 sp.SlashDir = dir;
+                sp.SlashStep = step;
+            }
         }
     }
 }
