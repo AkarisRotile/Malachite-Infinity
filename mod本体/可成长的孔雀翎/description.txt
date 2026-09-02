@@ -1,0 +1,60 @@
+通过砍树获得孔雀翎
+会随着游戏进程进行加强
+击败特定boss解锁星图（点击左下角进入UI）
+后续可能会做一些旮旯给木剧情？
+感谢所有喜欢这个mod的大家！
+
+对天赋星图中节点效果有修改建议可以直接告诉我
+
+
+代码：始弦
+bug修复：哈基米3.1P
+数值：始弦
+角色立绘：
+ - BiliBili：@苗库里
+ - Pixiv：@takeez3
+文本：始弦
+
+Added an English translation option, which can be selected in the mod config. (Note: As a non-native English speaker, the translation quality might not be perfect.)
+
+Credits & Disclaimer:
+
+Original Weapon Design & Assets: All credits for the original "Malachite" weapon design, concept, and related assets go to the Calamity Mod Team.
+
+Disclaimer: This is a 100% free, fan-made progression add-on and is not officially affiliated with the Calamity Mod.
+
+V1.0：更新了文本对话，随机触发或右键主动触发
+V1.1：修复bug
+V1.2：更改了部分描述
+V1.2.1：修改了部分属性，以及更改了潜伏攻击
+V1.2.2：修改了部分文字
+V1.2.3：平衡性调整，优化了部分代码
+V1.2.4：修了一下可能的bug？不确定效果
+V1.2.5：前期平衡调整，修了一些bug
+V1.2.6：天赋树更新
+V1.3：优化了天赋树
+V1.3.1：小优化
+V1.3.2：进一步优化，加入了对粒子效果的配置页面
+V1.3.3：小优化
+V1.3.4：对前期的平衡调整，以及极大幅度优化了性能问题
+V1.3.5：调整了数值
+V1.3.6：神秘小更新
+V1.4：you know
+V1.4.2：修复了字体不显示的bug
+V1.4.3：体验优化，增加了可配置选项，平衡调整
+V1.4.4：修bug
+V1.4.5：拆屎山
+V1.4.6：修bug以及稍微加强了前期
+V1.4.7：小幅度更新
+V1.5：新立绘
+V1.5.1：修改了一些叙述
+V1.5.2：轻量级更新，减少卡顿
+
+V1.5.3+（脱离灾厄重构阶段）：
+弹幕与特效实现参考以下开源项目（合规署名）：
+- CalamityModPublic（Azafure, LLC 专有许可，官方允许作为开发参考）：射线/残影实现思路
+  https://github.com/CalamityTeam/CalamityModPublic
+- CalamityOverhaul（MIT License, Copyright (c) hocha113）：三层光带配色、领域展开灵感
+  https://github.com/hocha113/CalamityOverhaul
+- CalamityEntropy（社区开源）：机制拓展参考
+  https://github.com/hocha113/CalamityEntropy

@@ -1,0 +1,20 @@
+# --- 可成长的孔雀翎 · Git 忽略规则（2026-09-02）---
+# 构建产物（工作区 bin/obj 均为 dotnet build 自检产物，不纳入版本库）
+mod本体/可成长的孔雀翎/bin/
+mod本体/可成长的孔雀翎/obj/
+
+# 工具下载暂存区（含未安装包与扫描脚本）
+_tools_staging/
+
+# VS Code / Rider 本地设置
+.vscode/
+.idea/
+*.user
+
+# 系统与临时文件
+Thumbs.db
+Desktop.ini
+*.tmp
+
+# 说明：写法/ 与 mod本体/ 源码全部纳入版本控制；
+# ModSources 同步目录（游戏目录）不属于本工作区，由作者另行管理。

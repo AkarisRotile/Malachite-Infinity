@@ -1,0 +1,103 @@
+DamageClasses: {
+	MalachiteDamageClass: {
+		DisplayName: Malachite
+	}
+}
+
+Items: {
+	PeacockWillowBlade: {
+		DisplayName: 孔雀柳刃 / Willow Blade
+		Tooltip: 会随着游戏进程成长的孔雀柳刃
+	}
+}
+
+Projectiles: {
+	OrbitingMalachiteProj.DisplayName: Orbiting Malachite Proj
+	MalachitePlagueCloud.DisplayName: Malachite Plague Cloud
+	MalachiteExplosion.DisplayName: Malachite Explosion
+	MalachiteExplosiveFeather.DisplayName: Malachite Explosive Feather
+	BasicMalachiteProj.DisplayName: Basic Malachite Proj
+	MalachiteDashProj.DisplayName: Malachite Dash Proj
+	MalachiteWingProj.DisplayName: Malachite Wing Proj
+	MalachiteCatastrophe.DisplayName: Malachite Catastrophe
+	MalachiteCataclysm.DisplayName: Malachite Cataclysm
+	MalachiteCataFist.DisplayName: Malachite Cata Fist
+	MalachiteCataSlash.DisplayName: Malachite Cata Slash
+}
+
+Configs: {
+	MalachiteConfig: {
+		DisplayName: Malachite Config
+
+		Headers: {
+			性能与画质: 性能与画质 Header
+			Performance_性能与画质: Performance_性能与画质 Header
+			Localization_语言设置: Localization_语言设置 Header
+			UI_界面设置: U I_界面设置 Header
+		}
+
+		ParticleLevel: {
+			Label: 粒子特效密度
+			Tooltip:
+				'''
+				控制攻击、暴击、剑阵自转等产生的粒子数量。
+				极简：大幅砍掉次要特效，解决卡顿。
+				均衡：动态限制特效，兼顾画质与帧数。
+				全开：不做任何限制（仅推荐高配电脑）。
+				'''
+		}
+
+		Language: {
+			Tooltip:
+				'''
+				Switch the language of Malachite's custom texts.
+				切换孔雀翎自定义剧情与星图的语言。
+				'''
+			Label: Mod Language / 模组语言
+		}
+
+		AutoPlayDialog: {
+			Tooltip:
+				'''
+				When enabled, dialogues will play automatically. When disabled, you need to click the dialog box to proceed.
+				开启时对话将自动播放，关闭时需要点击对话框才能进入下一句。
+				'''
+			Label: Auto Play Dialog / 自动播放对话
+		}
+	}
+
+	ParticleEffectLevel: {
+		Tooltip: ""
+
+		Low: {
+			Label: 极简 (流畅优先)
+			Tooltip: ""
+		}
+
+		Medium: {
+			Label: 均衡 (推荐设置)
+			Tooltip: ""
+		}
+
+		High: {
+			Label: 全开 (画质优先)
+			Tooltip: ""
+		}
+	}
+
+	MalachiteLanguage: {
+		English: {
+			Tooltip: ""
+			Label: English
+		}
+
+		Chinese: {
+			Tooltip: ""
+			Label: 简体中文
+		}
+
+		Tooltip: ""
+	}
+}
+
+"Keybinds.与孔雀翎对话 (Talk to Malachite).DisplayName": 与孔雀翎对话 ( Talk to  Malachite)

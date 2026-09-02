@@ -1,0 +1,4 @@
+displayName = 可成长的孔雀翎/Malachite Infinity
+author = AKARIS
+version = 1.5.3
+modReferences = CalamityMod
