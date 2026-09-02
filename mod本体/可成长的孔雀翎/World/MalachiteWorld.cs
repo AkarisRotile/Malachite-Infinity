@@ -9,14 +9,23 @@ namespace 可成长的孔雀翎
 {
     public class MalachiteGlobalNPC : GlobalNPC
     {
-        // 记录所有 Boss 击杀（任意模组），供进度系统与技能点体系使用。
-        // 仅在服务器/单机侧登记（MP 客户端不写），保证世界档权威一致。
-        // （v2 起已删除旧"瘟疫降级"PostAI 段：灾厄瘟疫减益路径整体退役）
+        // 记录 Boss 击杀并发放技能点：仅服务器/单机侧执行（MP 客户端不写），保证世界档权威一致。
+        // 发点规则（用户拍板）：仅该世界"不同 Boss 首杀"发点，全图在线玩家都有份，数值见 TalentEconomy。
+        // 注：多人把服务端点数同步到各客户端属后续波次 TODO（单机/主机本地即时生效）。
         public override void OnKill(NPC npc)
         {
-            if (npc.boss && Main.netMode != NetmodeID.MultiplayerClient)
+            if (!npc.boss || Main.netMode == NetmodeID.MultiplayerClient) return;
+
+            var progress = MalachiteProgress.Instance;
+            string key = MalachiteProgress.GetBossKey(npc);
+            bool isFirstKill = !progress.DefeatedBosses.Contains(key);
+            progress.RegisterDefeat(npc);
+
+            if (isFirstKill)
             {
-                MalachiteProgress.Instance.RegisterDefeat(npc);
+                int pts = TalentEconomy.PointsForBoss(npc);
+                if (pts > 0)
+                    TalentEconomy.GrantToAllPlayers(pts);
             }
         }
     }
