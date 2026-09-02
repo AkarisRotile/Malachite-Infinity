@@ -18,7 +18,9 @@ namespace 可成长的孔雀翎
     /// </summary>
     public class MeleeSlashProj : ModProjectile
     {
-        public override string Texture => "可成长的孔雀翎/Textures/Pixel";
+        /// <summary>斩击贴图占位 = 泰拉之刃(Terra Blade)光束 Projectile_132（运行时引用原版资源，等同复制）。
+        /// 想换成独立文件时：把该贴图 PNG 放进 Textures\MeleeSlashPlaceholder.png 并改此路径即可。</summary>
+        public override string Texture => "Terraria/Images/Projectile_132";
 
         /// <summary>玩家朝向（1=右 / -1=左）。</summary>
         public int SlashDir = 1;
@@ -68,35 +70,22 @@ namespace 可成长的孔雀翎
 
         public override bool PreDraw(ref Color lightColor)
         {
-            float life = MathHelper.Clamp(1f - (Projectile.timeLeft - 1) / 6f, 0f, 1f); // 0→1 展开
-            float fade = 1f - life * 0.55f; // 尾部淡出
+            // 占位贴图绘制：透明度/尺寸常量见 MalachiteMelee（SlashVisualAlpha / SlashVisualScale），可实机微调。
+            float life = MathHelper.Clamp(1f - Projectile.timeLeft / 7f, 0f, 1f); // 0→1 展开
+            Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
             Vector2 center = Projectile.Center - Main.screenPosition;
+            Vector2 origin = tex.Size() * 0.5f;
 
+            // 朝向 + 小幅弧线摆动，模拟"挥过"的弧迹
+            float rot = (SlashDir >= 0 ? 0f : MathHelper.Pi) + MathHelper.Lerp(-0.38f, 0.38f, life);
+            float alpha = MalachiteMelee.SlashVisualAlpha * MathHelper.Clamp(1.15f - life * 0.85f, 0.15f, 1f);
+            float scale = MalachiteMelee.SlashVisualScale * (0.7f + 0.55f * life);
+
+            Main.spriteBatch.Draw(tex, center, null, Color.White * alpha, rot, origin, scale, SpriteEffects.None, 0f);
+
+            // 微弱 additive 发光层（延续本模组特效风格，透明度同常量缩水）
             AdditiveLayer.Begin();
-            // 扇形刃光：9 条沿角度的光带（参考本项目射线光带绘制范式）
-            const int rays = 9;
-            const float spreadDeg = 100f;
-            int facing = SlashDir;
-            for (int i = 0; i < rays; i++)
-            {
-                float t = rays == 1 ? 0.5f : i / (float)(rays - 1);
-                float deg = (-spreadDeg * 0.5f + spreadDeg * t);
-                // 朝向：右=绕+X，左=绕-X（镜像角度）
-                float ang;
-                if (facing >= 0) ang = MathHelper.ToRadians(deg);
-                else ang = MathHelper.Pi - MathHelper.ToRadians(deg);
-                Vector2 dir = new Vector2((float)Math.Cos(ang), (float)Math.Sin(ang));
-                float len = (52f - 20f * life) * (0.9f + 0.2f * t);
-                float w = 1.6f + 2.4f * (1f - Math.Abs(t - 0.5f) * 2f); // 中间粗
-
-                Color col = MalachitePalette.White * (fade * 0.55f);
-                Main.spriteBatch.Draw(AdditiveLayer.Pixel, center, null, col, dir.ToRotation(),
-                    new Vector2(0f, 0.5f), new Vector2(len, w * 1.6f), SpriteEffects.None, 0f);
-                Main.spriteBatch.Draw(AdditiveLayer.Pixel, center, null, MalachitePalette.PrimaryGreen * (fade * 0.85f), dir.ToRotation(),
-                    new Vector2(0f, 0.5f), new Vector2(len, w), SpriteEffects.None, 0f);
-                Main.spriteBatch.Draw(AdditiveLayer.Pixel, center, null, MalachitePalette.GreenBright * (fade * 0.9f), dir.ToRotation(),
-                    new Vector2(0f, 0.5f), new Vector2(len * 0.62f, w * 0.4f), SpriteEffects.None, 0f);
-            }
+            Main.spriteBatch.Draw(tex, center, null, Color.White * (alpha * 0.22f), rot, origin, scale * 1.07f, SpriteEffects.None, 0f);
             AdditiveLayer.End();
             return false;
         }
