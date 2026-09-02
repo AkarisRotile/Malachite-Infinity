@@ -194,8 +194,8 @@ namespace 可成长的孔雀翎
         // 弧度语义：0 = 朝前水平；负值 = 向上（屏幕 Y 向下，sin<0 即上）。
         private static readonly float[] StepStartRadL = { 0.45f, -0.55f, 0.25f };
         private static readonly float[] StepEndRadL = { -1.05f, 1.0f, -1.25f };
-        /// <summary>每段挥动半径（px，即攻击范围，越后段越大）。</summary>
-        private static readonly float[] StepReachArr = { 96f, 108f, 128f };
+        /// <summary>每段挥动半径（px，即攻击范围，越后段越大；2026-09-03 实机要求≈2倍：96/108/128 → 200/225/256）。</summary>
+        private static readonly float[] StepReachArr = { 200f, 225f, 256f };
         /// <summary>每段刃身大小倍率。</summary>
         private static readonly float[] StepScaleArr = { 1.0f, 1.12f, 1.30f };
 
@@ -204,15 +204,33 @@ namespace 可成长的孔雀翎
         public static float StepReach(int step) => StepReachArr[Math.Clamp(step, 0, 2)];
         public static float StepScale(int step) => StepScaleArr[Math.Clamp(step, 0, 2)];
 
-        // ---- 弧光带（纯特效、无贴图刃体；外缘锐利/内缘软融，带宽≈半径40%）绘制参数 ----
-        /// <summary>弧光整体透明度（0~1）。</summary>
-        public const float SlashVisualAlpha = 0.9f;
-        /// <summary>弧光带径向宽度比例（相对挥动半径，参考鬼切阔剑量级≈0.4）。</summary>
-        public const float SlashBandWidth = 0.40f;
-        /// <summary>外缘锐利边宽度比例（亮线，比主带细）。</summary>
-        public const float SlashEdgeWidth = 0.16f;
-        /// <summary>轨迹采样上限（帧，= 弧光带长度）。</summary>
+        // ---- 挥动特效贴图（用户自绘 MeleeSlash.png，已裁透明边；挥动圆心=贴图最左像素）----
+        /// <summary>裁剪后贴图宽度（px）：画到挥动半径的比例基准（reach / SlashArtWidth）。</summary>
+        public const float SlashArtWidth = 140f;
+        /// <summary>裁剪后贴图锚点 Y（最左像素列的垂直质心；X=0 即最左像素 = 挥动圆心）。</summary>
+        public const float SlashArtPivotY = 12.5f;
+        /// <summary>刃体贴图本体绘制透明度（正常光照层）。</summary>
+        public const float SlashArtAlpha = 1.0f;
+        /// <summary>刃体贴图加色辉光强度（叠加一层柔和发光）。</summary>
+        public const float SlashArtGlowAlpha = 0.45f;
+
+        // ---- 曳光/拖尾（适配贴图：沿刃尖轨迹的加色细带 + 贴图残影）----
+        /// <summary>曳光整体透明度（0~1）。</summary>
+        public const float SlashVisualAlpha = 0.55f;
+        /// <summary>外缘曳光带宽度比例（相对挥动半径，细亮线）。</summary>
+        public const float SlashEdgeWidth = 0.07f;
+        /// <summary>内侧软融宽度比例（比外缘宽、更淡）。</summary>
+        public const float SlashBandWidth = 0.20f;
+        /// <summary>轨迹采样上限（帧，= 拖尾残影/曳光带长度）。</summary>
         public const int SlashTrailMax = 12;
+
+        // ---- 命中判定盒（覆盖挥动半径的大盒，随挥动扫过）----
+        /// <summary>判定盒中心所在的半径比例（相对 StepReach；0.5 = 覆盖内~外缘）。</summary>
+        public const float SwingHitCenterK = 0.5f;
+        /// <summary>判定盒宽度比例（相对 StepReach，约 1.02 = 几乎覆盖全刃长）。</summary>
+        public const float SwingHitSpanK = 1.02f;
+        /// <summary>判定盒高度（px，垂直厚度）。</summary>
+        public const int SwingHitHeight = 150;
 
         /// <summary>精准层数的总伤害倍率（1 + 层数×单层）。</summary>
         public static float PrecisionDamageMult(int stacks) => 1f + Math.Min(PrecisionMaxStacks, Math.Max(0, stacks)) * PrecisionDamagePerStack;

@@ -4,7 +4,7 @@
 A jungle blade that grows with you — the Peacock Willow Blade.
 
 ========================================================
-【中文 · 简介】
+【简介】
 孔雀柳刃是一把"会成长"的武器：砍树就有机会获得它。之后它会沿着一条贴近原版节奏的
 成长曲线（按 Boss 推进逐档变强），配上一套独立的「念」伤害体系与「星图」天赋，陪你走完整场冒险。
 
@@ -30,13 +30,13 @@ on top of Calamity as extra growth content.
   Mind (念): a standalone damage class — full scaling from generic/summon bonuses, 25% compatibility from melee/ranged/other mods.
 - 星图（左下角✦）：「力」页五轨加点（攻击/穿甲/攻速/暴击/并发弹幕，暴击溢出增幅终伤），免费洗点；「技」页为技能预留，开发中。
   Star Map (✦, bottom-left): "Strength" page — five talent tracks (damage / armor pen / attack speed / crit / volley), free respec; "Technique" page reserved for skills (WIP).
-- 技能点：不同 Boss 首杀发放，同世界在线玩家都有份。
+- 技能点：不同 Boss 首杀发放。
   Skill points: awarded on first-time boss kills; every online player in the world shares in the reward.
-- 近战形态原型（F 键，可改键）：三段"纯特效弧光"斩击（蓄势—爆发过冲—定格，顿挫手感），命中叠「精准」，双击方向=突进斩。参数仍在实机调参中，手感确认后并入「技」页。
+- 近战形态原型（自定义改键）：三段斩击，命中叠「精准」，双击方向=突进斩。参数仍在实机调参中，手感确认后并入「技」页。
   Melee form prototype (F key, rebindable): three-step pure-VFX arc slashes (wind-up -> burst overshoot -> settle), "Precision" stacks on hit, double-tap directional dash slash. Tuning in progress; it will become the first "Technique" node once the feel is approved.
 - 领域展开（V 键）：原型技能。 Domain Expansion (V key): prototype ability.
-- 对话与剧情：丛林刃灵少女的陪伴线——右键/对话键闲聊，随进度推进的主线、事件彩蛋与"月下的坦白"。剧情文案均逐句人工确认。
-  Dialogue & story: a gentle jungle-blade spirit companion — idle talk via right-click / dialogue key, story milestones, event easter eggs and the "Moonlit Confession" truth. Story text is line-by-line human-approved.
+- 对话与剧情：少女的陪伴线
+  Dialogue & story: a gentle jungle-blade spirit companion
 - 潜伏：自建潜伏值，满值自动扇形齐射。
   Stealth: an independent stealth gauge; at full charge, attacks become a fan volley.
 
