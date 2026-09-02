@@ -234,9 +234,8 @@ namespace 可成长的孔雀翎
         {
             if (!MalachiteCache.IsMalachiteItem(Player.HeldItem)) return;
 
-            int stage = Math.Clamp(ProgressSystem.GetStage(), 0, MalachiteData.FlatAP.Length - 1);
             var profile = TalentEvaluator.Build(this);
-            modifiers.ArmorPenetration += MalachiteData.FlatAP[stage] + profile.ArmorPen;
+            modifiers.ArmorPenetration += WillowGrowth.FlatAP(ProgressSystem.GetStage()) + profile.ArmorPen;
         }
 
         public void TriggerRightClickDialogue()

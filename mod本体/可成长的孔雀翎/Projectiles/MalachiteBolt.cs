@@ -50,7 +50,7 @@ namespace 可成长的孔雀翎
             Projectile.extraUpdates = 8;                     // 极速射线感
             Projectile.usesLocalNPCImmunity = true;
             Projectile.localNPCHitCooldown = 5;
-            Projectile.DamageType = ModContent.GetInstance<MalachiteDamageClass>();
+            Projectile.DamageType = MindDamageClass.Instance;
             Projectile.tileCollide = false;
             Projectile.timeLeft = 300;
         }

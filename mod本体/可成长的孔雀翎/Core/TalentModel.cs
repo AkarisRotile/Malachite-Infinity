@@ -42,11 +42,11 @@ namespace 可成长的孔雀翎
         public bool IsEmpty => DamageMult <= 1f && ArmorPen == 0 && AttackSpeedMult <= 1f
             && CritChanceBonus == 0 && VolleyBonus == 0;
 
-        /// <summary>总暴击溢出增幅：暴击 > 100% 时，每溢出 1% 提升 finalMult = 0.5%（可调）。</summary>
+        /// <summary>总暴击溢出增幅：暴击 > 100% 时，每溢出 1% 提升 finalMult（常量见 TalentCatalog）。</summary>
         public static float OverflowDamageMultiplier(int totalCritPercent)
         {
             int overflow = totalCritPercent - 100;
-            return overflow > 0 ? 1f + overflow * 0.005f : 1f;
+            return overflow > 0 ? 1f + overflow * TalentCatalog.Effects.CritOverflowFinalMult : 1f;
         }
     }
 

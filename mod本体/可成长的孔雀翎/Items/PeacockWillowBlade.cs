@@ -25,13 +25,13 @@ namespace 可成长的孔雀翎
     {
         public override string Texture => "可成长的孔雀翎/Textures/MalachiteItemGame";
 
-        private const int TableLength = 14; // 与 MalachiteData 各表长度一致（M4 重锚时同步）
-        private static int ClampStage(int stage) => Math.Clamp(stage, 0, TableLength - 1);
+        // 阶段成长数据统一来自 WillowGrowth（独立成长系统，见 Core\WillowGrowth.cs）
+        private static int ClampStage(int stage) => WillowGrowth.ClampStage(stage);
 
         public override void SetDefaults()
         {
             Item.damage = 32;              // 基础伤害（阶段/加点倍率在 ModifyWeaponDamage 应用）
-            Item.DamageType = ModContent.GetInstance<MalachiteDamageClass>();
+            Item.DamageType = MindDamageClass.Instance;
             Item.width = 40;
             Item.height = 21;
             Item.useTime = 20;
@@ -81,24 +81,21 @@ namespace 可成长的孔雀翎
         public override void ModifyWeaponDamage(Player player, ref StatModifier damage)
         {
             int stage = ProgressSystem.GetStage();
-            damage *= MalachiteData.DamageMultiplier[ClampStage(stage)];
+            damage *= WillowGrowth.DamageMult(stage);
 
             var profile = TalentEvaluator.Build(player.GetModPlayer<MalachitePlayer>());
-            if (!profile.IsEmpty)
-            {
-                damage *= profile.DamageMult;
+            damage *= profile.DamageMult; // 无加点时恒为 1
 
-                // 暴击溢出增幅：总暴击 > 100% 时按 0.5%/1% 提升终伤（规则见 TalentCatalog）
-                float totalCrit = 4f + profile.CritChanceBonus + player.GetCritChance(Item.DamageType);
-                if (totalCrit > 100f)
-                    damage *= 1f + (totalCrit - 100f) * TalentCatalog.Effects.CritOverflowFinalMult;
-            }
+            // 暴击溢出增幅（P1 修复：不再被"是否加点"门控；规则唯一出处 TalentProfile）
+            // totalCrit ≈ 4% 基础 + 五轨暴击 + 该职业(念)装备暴击
+            float totalCrit = 4f + profile.CritChanceBonus + player.GetCritChance(Item.DamageType);
+            damage *= TalentProfile.OverflowDamageMultiplier((int)Math.Ceiling(totalCrit));
         }
 
         public override float UseSpeedMultiplier(Player player)
         {
             int stage = ProgressSystem.GetStage();
-            float speed = 1f + MalachiteData.SpeedMult[ClampStage(stage)];
+            float speed = WillowGrowth.SpeedFactor(stage); // 攻速随阶段逐渐加快（0.85→3.8）
 
             var profile = TalentEvaluator.Build(player.GetModPlayer<MalachitePlayer>());
             speed *= profile.AttackSpeedMult;
@@ -125,7 +122,7 @@ namespace 可成长的孔雀翎
                     int baseCount = 3;
                     int shots = Math.Min(12, baseCount + profile.VolleyBonus);
                     float spread = stage >= 8 ? 8f : 6.5f;
-                    float stealthMult = MalachiteData.StealthDamageMult[ClampStage(stage)];
+                    float stealthMult = WillowGrowth.StealthDamageMult(stage);
                     int finalDmg = Math.Max(1, (int)(damage * stealthMult));
 
                     for (int i = 0; i < shots; i++)
@@ -196,7 +193,7 @@ namespace 可成长的孔雀翎
                 $"[c/32CD32:✦] 孔雀柳刃 [c/32CD32:✦]   {stageData.Title}",
                 $"[c/32CD32:✦] Willow Blade [c/32CD32:✦]   {stageData.Title}")) { OverrideColor = stageData.Color });
 
-            int flatAP = MalachiteData.FlatAP[ClampStage(stage)] + profile.ArmorPen;
+            int flatAP = WillowGrowth.FlatAP(stage) + profile.ArmorPen;
             if (flatAP > 0)
                 tooltips.Add(new TooltipLine(Mod, "DynamicAP", MalachiteData.Loc(
                     $"[c/FFA500:♦ 护甲穿透 +{flatAP}]",

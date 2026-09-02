@@ -11,12 +11,8 @@ namespace 可成长的孔雀翎
         public static bool IsEnglish => ModContent.GetInstance<MalachiteConfig>()?.Language == MalachiteLanguage.English;
         public static string Loc(string zh, string en) => IsEnglish ? en : zh;
 
-        public static readonly float[] DamageMultiplier = { 0.22f, 0.28f, 0.35f, 0.43f, 0.55f, 0.64f, 0.85f, 0.98f, 1.1f, 1.28f, 1.48f, 1.78f, 2.12f, 3.2f };
-        public static readonly int[] FlatAP = { 5, 7, 8, 9, 10, 10, 10, 12, 14, 16, 20, 24, 28, 35 };
-        public static readonly float[] SpeedMult = { -0.55f, -0.45f, -0.35f, -0.25f, -0.15f, 0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.65f, 0.85f, 1.4f };
-        public static readonly int[] NormalArrayCount = { 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6, 10 };
-        public static readonly int[] StealthArrayCount = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 8, 12, 20 };
-        public static readonly float[] StealthDamageMult = { 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.25f, 1.3f, 1.35f, 1.4f, 1.45f, 1.5f, 1.6f, 1.8f, 2.5f };
+        // 注：原 6 张成长数值表（DamageMultiplier/FlatAP/SpeedMult/数组/潜伏倍率）已迁至 Core\WillowGrowth.cs
+        // （阶段 2b 独立成长系统，0~9 定稿 + 10~13 预置）
 
         public struct StageInfo
         {

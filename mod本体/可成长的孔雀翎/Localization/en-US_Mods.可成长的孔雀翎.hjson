@@ -1,6 +1,6 @@
 DamageClasses: {
-	MalachiteDamageClass: {
-		DisplayName: Malachite
+	MindDamageClass: {
+		DisplayName: 念 / Mind
 	}
 }
 

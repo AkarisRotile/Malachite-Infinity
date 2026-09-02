@@ -39,7 +39,7 @@ namespace 可成长的孔雀翎
             Projectile.height = 22;
             Projectile.extraUpdates = 3;                     // 更快的飞行手感
             Projectile.friendly = true;
-            Projectile.DamageType = ModContent.GetInstance<MalachiteDamageClass>();
+            Projectile.DamageType = MindDamageClass.Instance;
             Projectile.penetrate = 1;
             Projectile.timeLeft = 240;
             Projectile.tileCollide = true;
