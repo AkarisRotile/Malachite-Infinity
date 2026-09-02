@@ -175,26 +175,22 @@ namespace 可成长的孔雀翎
         public const int DashImmuneTime = 26;
         public const int DashCooldown = 24;
 
-        /// <summary>按住近战键时的出刀间隔（帧；含活跃+停驻，越大越"一顿一顿"，顿挫节奏）。</summary>
-        public const int SwingInterval = 16;
+        /// <summary>按住近战键时的出刀间隔（帧；= 蓄势+挥扫+定格，越大越"一顿一顿"）。</summary>
+        public const int SwingInterval = 15;
 
-        // ---- 挥动曲线 v3（顿挫手感；参考 ES 节奏 + CalamityEntropy BaseSwing 两段式变速，自主实现）----
-        /// <summary>单次挥动"活跃"帧数（此段内角度推进，越短越急促）。</summary>
-        public const int SwingTicks = 12;
-        /// <summary>挥到终点后的停驻帧数（收势停顿 = 顿挫感来源之一）。</summary>
-        public const int SwingHoldTicks = 2;
-        /// <summary>加速段占比（约前 45% 加速伸刃，之后急刹收刃）。</summary>
-        public const float SwingPhase = 0.45f;
-        /// <summary>曲线幂：越大起手越慢、中段越"甩"、收尾越急刹（2.0~3.0 之间微调）。</summary>
-        public const float SwingEasePower = 2.2f;
-        // 刃长脉动系数：起手稍收 → 中段伸够（"够着打"）→ 收势回落
-        public const float ReachStartK = 0.92f;
-        public const float ReachPeakK = 1.10f;
-        public const float ReachEndK = 0.96f;
-        // 刃身大小脉动系数（同理，挥速峰值处最大）
-        public const float ScaleStartK = 0.98f;
-        public const float ScalePeakK = 1.14f;
-        public const float ScaleEndK = 1.0f;
+        // ---- 挥动曲线 v4（纯特效弧光；顿挫 = "爆发过冲→回坐"曲线，参考 CWR 鬼切 OniSlashRenderer.BurstCurve 思路，自主实现）----
+        /// <summary>拉背/蓄势帧数（刃未出、不判定伤害，制造"啪"前的蓄力感）。</summary>
+        public const int SwingGatherFrames = 3;
+        /// <summary>挥扫帧数（角度在此段内推进，爆发曲线驱动）。</summary>
+        public const int SwingSweepFrames = 8;
+        /// <summary>满形定格帧数（挥到终点后的短暂停顿）。</summary>
+        public const int SwingHoldFrames = 4;
+        /// <summary>爆发过冲倍率（>1：先冲过目标角再回坐，替代"减速拖尾"）。</summary>
+        public const float SwingOvershoot = 1.05f;
+        /// <summary>爆发曲线冲顶位置（行程占比，约 0.62 处过冲峰值）。</summary>
+        public const float SwingBurstEnd = 0.62f;
+        /// <summary>刃长随挥动的脉动幅度（半径 ×(1+该值)，过冲处最大）。</summary>
+        public const float SwingReachPulse = 0.08f;
         // 弧度语义：0 = 朝前水平；负值 = 向上（屏幕 Y 向下，sin<0 即上）。
         private static readonly float[] StepStartRadL = { 0.45f, -0.55f, 0.25f };
         private static readonly float[] StepEndRadL = { -1.05f, 1.0f, -1.25f };
@@ -208,13 +204,15 @@ namespace 可成长的孔雀翎
         public static float StepReach(int step) => StepReachArr[Math.Clamp(step, 0, 2)];
         public static float StepScale(int step) => StepScaleArr[Math.Clamp(step, 0, 2)];
 
-        // ---- 斩击占位贴图（泰拉之刃本体·物品贴图，运行时引用原版资源）绘制参数 ----
-        /// <summary>斩击整体透明度（0~1）。</summary>
-        public const float SlashVisualAlpha = 0.95f;
-        /// <summary>斩击显示尺寸倍率（与半径联乘，改大即整体更大）。</summary>
-        public const float SlashVisualScale = 2.2f;
-        /// <summary>刃身朝向校正角（弧度，相对径向的偏移；实机方向不对就改 ±Pi/2 一档档试）。</summary>
-        public const float SlashBladeArtOffset = MathHelper.PiOver2;
+        // ---- 弧光带（纯特效、无贴图刃体；外缘锐利/内缘软融，带宽≈半径40%）绘制参数 ----
+        /// <summary>弧光整体透明度（0~1）。</summary>
+        public const float SlashVisualAlpha = 0.9f;
+        /// <summary>弧光带径向宽度比例（相对挥动半径，参考鬼切阔剑量级≈0.4）。</summary>
+        public const float SlashBandWidth = 0.40f;
+        /// <summary>外缘锐利边宽度比例（亮线，比主带细）。</summary>
+        public const float SlashEdgeWidth = 0.16f;
+        /// <summary>轨迹采样上限（帧，= 弧光带长度）。</summary>
+        public const int SlashTrailMax = 12;
 
         /// <summary>精准层数的总伤害倍率（1 + 层数×单层）。</summary>
         public static float PrecisionDamageMult(int stacks) => 1f + Math.Min(PrecisionMaxStacks, Math.Max(0, stacks)) * PrecisionDamagePerStack;
