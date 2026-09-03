@@ -217,8 +217,8 @@ namespace 可成长的孔雀翎
         public const float SlashArtPivotY = 12.5f;
         /// <summary>刃体贴图本体绘制透明度（正常光照层）。</summary>
         public const float SlashArtAlpha = 1.0f;
-        /// <summary>刃体贴图整体亮度倍率（<1 即调暗本体，防过曝；2026-09-03 实机要求调低）。</summary>
-        public const float SlashArtBrightness = 0.8f;
+        /// <summary>刃体贴图整体亮度倍率（调暗本体，靠周围光晕托出"刀光"而非实贴图；v5.6 = 0.62）。</summary>
+        public const float SlashArtBrightness = 0.62f;
         /// <summary>刃体贴图加色辉光强度（叠加一层柔和发光）。</summary>
         public const float SlashArtGlowAlpha = 0.30f;
 
@@ -235,12 +235,12 @@ namespace 可成长的孔雀翎
         // ---- 挥动路径特效（v5.3：按爆发曲线真实路径重采样，双层扇形弧光带——彩色主带 + 嵌套白热芯带，参考特莉波卡镰刀历史采样条带与鬼切斩痕带）----
         /// <summary>路径扇内半径比例（相对刃尖外半径，弧光带内缘）。</summary>
         public const float PathInnerK = 0.45f;
-        /// <summary>主带透明度（加色；白天亮背景也需可见）。</summary>
-        public const float PathGlowAlpha = 0.45f;
+        /// <summary>主带透明度（v5.6 提高，刀光感）。</summary>
+        public const float PathGlowAlpha = 0.72f;
         /// <summary>白热芯带内半径比例（嵌套在彩色带内侧更窄更亮）。</summary>
-        public const float PathWhiteInnerK = 0.62f;
-        /// <summary>白热芯带透明度。</summary>
-        public const float PathWhiteAlpha = 0.40f;
+        public const float PathWhiteInnerK = 0.70f;
+        /// <summary>白热芯带透明度（v5.6 提高）。</summary>
+        public const float PathWhiteAlpha = 0.60f;
         /// <summary>路径外缘锐亮线宽度比例（相对刃尖外半径）。</summary>
         public const float PathEdgeWidth = 0.05f;
 
@@ -290,6 +290,8 @@ namespace 可成长的孔雀翎
             SpawnSlash(player, source, dmg, kb, dir, step);
             // 出刀音阶随段位爬升：段1/2/3 音调递进，段3 换重音（手感递进）
             SoundEngine.PlaySound(step == 2 ? SoundID.Item71 with { Pitch = 0.05f } : SoundID.Item15 with { Pitch = step * 0.12f }, player.Center);
+            if (step == 2 && player.whoAmI == Main.myPlayer)
+                ScreenShakeSystem.Shake(3.5f); // 段3 收尾轻震
         }
 
         /// <summary>双击方向触发突进斩：位移 + 短暂无敌 + 大号斩击。</summary>
@@ -373,6 +375,8 @@ namespace 可成长的孔雀翎
             SoundEngine.PlaySound(finisher
                 ? SoundID.Item71 with { Volume = 0.85f, Pitch = -0.25f }
                 : SoundID.Item15 with { Volume = 0.8f, Pitch = -0.2f }, player.Center);
+            if (player.whoAmI == Main.myPlayer)
+                ScreenShakeSystem.Shake(finisher ? 9f : 5f); // 满月重震 / 重斩中震
         }
 
         /// <summary>上挑斩（地面上 + F）：仰弧上挥，命中把敌人挑飞；带小跳跃起步。</summary>
@@ -388,6 +392,8 @@ namespace 可成长的孔雀翎
             SpawnMove(player, source, dmg, 7f, dir,
                 UpperArc[0], UpperArc[1], 1.05f, 1.10f, MoveKind.Upper, 0);
             SoundEngine.PlaySound(SoundID.Item15 with { Volume = 0.7f, Pitch = 0.35f }, player.Center);
+            if (player.whoAmI == Main.myPlayer)
+                ScreenShakeSystem.Shake(4f); // 上挑轻震
         }
 
         /// <summary>生成自定义招式斩击弹幕（绕玩家弧线挥动，见 MeleeSlashProj）。</summary>
