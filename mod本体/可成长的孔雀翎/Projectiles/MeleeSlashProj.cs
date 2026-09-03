@@ -42,7 +42,24 @@ namespace 可成长的孔雀翎
         public int ExtraHold = 0;
 
         private static Texture2D _glowTex;
+        private static Effect _slashFx;
+        private static bool _fxProbeDone = false;
+        private static bool _fxNotified = false;
         private static bool _dbgErrShown = false;
+
+        private static bool FxReady
+        {
+            get
+            {
+                if (!_fxProbeDone)
+                {
+                    _fxProbeDone = true;
+                    try { _slashFx = ModContent.Request<Effect>("可成长的孔雀翎/Effects/SlashArc").Value; }
+                    catch { _slashFx = null; }
+                }
+                return _slashFx != null;
+            }
+        }
 
         private int _age = 0;
         private int _flash = 0;
@@ -259,6 +276,82 @@ namespace 可成长的孔雀翎
                 new Vector2(len / gt.Width, Math.Max(1f, width) / gt.Height), SpriteEffects.None, 0f);
         }
 
+        private static readonly VertexPositionColorTexture[] _fanVerts = new VertexPositionColorTexture[64];
+
+        /// <summary>刀光扇形带：shader 版（顶点带 + SlashArc.fx，等效参考的 Reveal/刃头线/径向三层）。</summary>
+        private void DrawFanShader(Player owner, Vector2 oc, int step, Color tint, float holdFade)
+        {
+            SwingArc(step, out float theta0, out float _u1); _ = _u1;
+            float theta1 = _th[_th.Count - 1];
+            float R = _sc[_th.Count - 1] * MalachiteMelee.SlashArtWidth * _sx[_th.Count - 1];
+            if (Math.Abs(theta1 - theta0) < 0.001f || R <= 2f) return;
+            int slices = 28;
+            float pNow = Math.Clamp((_age - Gather) / (float)Math.Max(1, MalachiteMelee.SwingSweepFrames), 0f, 1f);
+            float innerK = MalachiteMelee.PathInnerK;
+            for (int k = 0; k <= slices; k++)
+            {
+                float uc = pNow * k / slices;
+                float th = MathHelper.Lerp(theta0, theta1, BurstCurve(uc));
+                Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
+                float rad = R;
+                // 内缘 v=0 / 外缘 v=1（外缘=刀尖轨迹锐利）
+                Vector2 pi = oc + dd * (rad * innerK) - Main.screenPosition;
+                Vector2 po = oc + dd * rad - Main.screenPosition;
+                float a = MathHelper.Lerp(0.30f, 1f, uc) * holdFade;
+                _fanVerts[k * 2] = new VertexPositionColorTexture(new Vector3(pi, 0f), Color.White * a, new Vector2(uc, 0f));
+                _fanVerts[k * 2 + 1] = new VertexPositionColorTexture(new Vector3(po, 0f), Color.White * a, new Vector2(uc, 1f));
+            }
+
+            var gd = Main.graphics.GraphicsDevice;
+            Main.spriteBatch.End();
+            Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState,
+                DepthStencilState.None, RasterizerState.CullNone, _slashFx, Matrix.Identity);
+            _slashFx.Parameters["transformMatrix"].SetValue(Matrix.CreateOrthographicOffCenter(0f, Main.screenWidth, Main.screenHeight, 0f, 0f, 1f));
+            Vector3 tc = tint.ToVector3();
+            _slashFx.Parameters["uColTint"].SetValue(tc);
+            _slashFx.Parameters["uColDeep"].SetValue(Vector3.Lerp(tc, Vector3.Zero, 0.72f));
+            _slashFx.Parameters["uColHot"].SetValue(Vector3.One);
+            _slashFx.Parameters["uLead"].SetValue(1f);
+            _slashFx.Parameters["uFlash"].SetValue(Math.Clamp(_flash / 3f, 0f, 1f));
+            _slashFx.Parameters["uOpacity"].SetValue(holdFade);
+            _slashFx.CurrentTechnique.Passes[0].Apply();
+            gd.DrawUserPrimitives(PrimitiveType.TriangleStrip, _fanVerts, 0, slices * 2);
+            Main.spriteBatch.End();
+            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
+                DepthStencilState.None, Main.Rasterizer, null, Main.GameViewMatrix.TransformationMatrix);
+        }
+
+        /// <summary>刀光扇形带：sprite 回退版（shader 不可用时的保底，观感同 v5.7）。</summary>
+        private void DrawFanSprite(Player owner, Vector2 oc, int step, Color tint, float holdFade)
+        {
+            SwingArc(step, out float theta0, out float _u1); _ = _u1;
+            float theta1 = _th[_th.Count - 1];
+            float R = _sc[_th.Count - 1] * MalachiteMelee.SlashArtWidth * _sx[_th.Count - 1];
+            if (Math.Abs(theta1 - theta0) < 0.001f || R <= 2f) return;
+            int steps = 30;
+            float pNow = Math.Clamp((_age - Gather) / (float)Math.Max(1, MalachiteMelee.SwingSweepFrames), 0f, 1f);
+            float sliceW = Math.Abs(theta1 - theta0) / steps;
+            Vector2 prevOuter = Vector2.Zero;
+            bool hasPrev = false;
+            for (int k = 0; k <= steps; k++)
+            {
+                float s = pNow * k / steps;
+                float th = MathHelper.Lerp(theta0, theta1, BurstCurve(s));
+                Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
+                float tk = k / (float)steps;
+                float ga = MalachiteMelee.PathGlowAlpha * (0.15f + 0.85f * tk) * holdFade;
+                Color gc = Color.Lerp(tint, Color.White, Math.Clamp(tk * 1.6f, 0f, 1f));
+                float wid = Math.Max(4f, sliceW * R * 1.05f);
+                DrawGlowSeg(oc + dd * (R * 0.50f), oc + dd * R, wid, gc * ga);
+                float wa = MalachiteMelee.PathWhiteAlpha * (0.5f + 0.5f * tk) * holdFade;
+                DrawGlowSeg(oc + dd * (R * 0.74f), oc + dd * (R * 0.98f), wid * 0.55f, Color.White * wa);
+                if (hasPrev)
+                    DrawSeg(prevOuter, oc + dd * R, Math.Max(2f, MalachiteMelee.StepReach(step) * ReachMult * MalachiteMelee.PathEdgeWidth), gc * Math.Min(1f, ga * 2.2f));
+                prevOuter = oc + dd * R;
+                hasPrev = true;
+            }
+        }
+
         private float KindRingK()
         {
             return Kind switch
@@ -300,40 +393,19 @@ namespace 可成长的孔雀翎
                 ? MathHelper.Lerp(1f, 0.5f, (_age - SweepEnd) / (float)Math.Max(1, MalachiteMelee.SwingHoldFrames + ExtraHold))
                 : 1f;
 
-            // ========== 刀光主体：扇形光带（内缘 0.5R → 刃尖外缘），逐段柔光，前缘白热 ==========
-            // 结构对应特莉波卡 TlipocasScytheHeld.PreDraw 的彩色条带 + 白芯；radial 采样用爆发曲线（与刃身同步）
-            SwingArc(step, out float theta0, out float _uend);
-            _ = _uend;
-            float theta1 = _th[n - 1];
-            float R = _sc[n - 1] * MalachiteMelee.SlashArtWidth * _sx[n - 1];
-            if (Math.Abs(theta1 - theta0) > 0.001f && R > 2f)
+            // ========== 刀光主体（GPU）：顶点带 + SlashArc.fx（Reveal 揭开/刃头白热线/径向三层截面，
+            //     机制参考鬼切 OniGateRift.fx，自主精简实现；shader 不可用自动回退 sprite 光带保底可见） ==========
+            if (FxReady)
             {
-                int steps = 30;
-                float pNow = Math.Clamp((_age - Gather) / (float)Math.Max(1, MalachiteMelee.SwingSweepFrames), 0f, 1f);
-                float sliceW = Math.Abs(theta1 - theta0) / steps;
-                Vector2 prevOuter = Vector2.Zero;
-                bool hasPrev = false;
-                for (int k = 0; k <= steps; k++)
+                if (!_fxNotified)
                 {
-                    float s = pNow * k / (float)steps;
-                    float th = MathHelper.Lerp(theta0, theta1, BurstCurve(s));
-                    Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
-                    float tk = k / (float)steps;
-                    // 彩色主带：白热前缘 → 主色旧段（渐隐）
-                    float ga = MalachiteMelee.PathGlowAlpha * (0.15f + 0.85f * tk) * holdFade;
-                    Color gc = Color.Lerp(tint, Color.White, Math.Clamp(tk * 1.6f, 0f, 1f));
-                    float wid = Math.Max(4f, sliceW * R * 1.05f);
-                    DrawGlowSeg(oc + dd * (R * 0.50f), oc + dd * R, wid, gc * ga);
-                    // 白热芯带：更窄更亮
-                    float wa = MalachiteMelee.PathWhiteAlpha * (0.5f + 0.5f * tk) * holdFade;
-                    DrawGlowSeg(oc + dd * (R * 0.74f), oc + dd * (R * 0.98f), wid * 0.55f, Color.White * wa);
-                    // 刀尖轨迹锐线（外缘最亮边）
-                    if (hasPrev)
-                        DrawSeg(prevOuter, oc + dd * R, Math.Max(2f, reachBase * MalachiteMelee.PathEdgeWidth), gc * Math.Min(1f, ga * 2.2f));
-                    prevOuter = oc + dd * R;
-                    hasPrev = true;
+                    _fxNotified = true;
+                    Main.NewText("[刀光] SlashArc.fx GPU 刀光已启用", MalachitePalette.GreenBright);
                 }
+                DrawFanShader(owner, oc, step, tint, holdFade);
             }
+            else
+                DrawFanSprite(owner, oc, step, tint, holdFade);
 
             // ========== 刃身本体：只画当前姿态一层（本体调暗 + 白热芯，杜绝贴纸残影） ==========
             Vector2 curScale = new Vector2(_sx[n - 1], _sy[n - 1]) * _sc[n - 1];
