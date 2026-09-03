@@ -209,26 +209,28 @@ namespace 可成长的孔雀翎
             mp.PrecisionStacks = Math.Min(MalachiteMelee.PrecisionMaxStacks, mp.PrecisionStacks + 1);
             mp.PrecisionTimer = MalachiteMelee.PrecisionDuration;
 
-            // 段2 挑击：施加向上浮空（§一.1）
-            if (Kind == MalachiteMelee.MoveKind.Step && SlashStep == 1)
+            // 卡肉顿帧（收敛版）：玩家级窗口抑制——同一窗口内后续挥击不再触发卡肉（段2在段1动画结束前挥出则跳过）；
+            // 命中→冻结 2 帧（原 3）、玩家/目标速度 ×0.3（原 0.1），且每挥只触发一次
+            int nowT = (int)Main.GameUpdateCount;
+            if (nowT - mp.LastHitstopTick >= MalachiteMelee.HitstopGapFrames)
             {
-                target.velocity.Y -= 6f;
-                target.netUpdate = true;
-            }
-
-            // 卡肉顿帧（§三.1）：命中→自身/玩家/目标速度骤降，硬直
-            if (_hitstop <= 0)
-            {
-                _hitstop = 3;
-                owner.velocity *= 0.1f;
+                mp.LastHitstopTick = nowT;
+                _hitstop = 2;
+                owner.velocity *= 0.3f;
+                target.velocity *= 0.3f;
                 _shakeT = Math.Max(_shakeT, 2f);
             }
-            target.velocity *= 0.1f;
 
+            // 击飞/浮空（放在卡肉减速之后施加，保证不被减速吞掉）：段2 挑击浮空；上挑斩击飞
+            if (Kind == MalachiteMelee.MoveKind.Step && SlashStep == 1)
+            {
+                target.velocity.Y = -6f;
+                target.netUpdate = true;
+            }
             if (Kind == MalachiteMelee.MoveKind.Upper && !_upperHit)
             {
                 _upperHit = true;
-                target.velocity.Y -= 9f;
+                target.velocity.Y = -9f;
                 target.velocity.X *= 0.4f;
                 target.netUpdate = true;
             }

@@ -52,6 +52,7 @@ namespace 可成长的孔雀翎
         public int PrecisionStacks = 0;
         public int PrecisionTimer = 0;
         public int LastDashTick = -100;
+        public int LastHitstopTick = -100; // 上次卡肉触发时刻（玩家级抑制窗口）
         private bool _prevCtrlLeft = false;
         private bool _prevCtrlRight = false;
         private int _lastLeftTapTick = -100;

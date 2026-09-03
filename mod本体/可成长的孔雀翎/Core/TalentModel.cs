@@ -246,6 +246,8 @@ namespace 可成长的孔雀翎
         public const float PathEdgeWidth = 0.05f;
 
         // ---- 击中反馈（v5.1：参考鬼切/镰刀命中：扩散环 + 砍痕闪刃 + 白热爆点）----
+        /// <summary>卡肉抑制窗口（帧）：同一窗口内的后续挥击不再触发卡肉（收敛手感，如段2在段1卡肉动画结束前挥出则跳过）。</summary>
+        public const int HitstopGapFrames = 10;
         /// <summary>命中反馈持续帧数。</summary>
         public const int HitFlashFrames = 7;
         /// <summary>命中扩散环最终半径（px）。</summary>
