@@ -53,6 +53,9 @@ namespace 可成长的孔雀翎
         private bool _upperHit = false;
         private float _shakeT = 0f;
         private bool _crestSpawned = false; // 每记挥击只留一枚纹章
+        private int _hitstop = 0;  // 卡肉顿帧：命中后冻结 3 帧
+        private int _impactT = 0;   // 下砸触地冲击波余帧
+        private bool _impactDone = false;
 
         private readonly List<float> _th = new List<float>();
         private readonly List<float> _sc = new List<float>();
@@ -112,6 +115,13 @@ namespace 可成长的孔雀翎
             Player owner = Main.player[Projectile.owner];
             if (owner == null || !owner.active || owner.dead) { Projectile.Kill(); return; }
             if (_age >= TotalFrames) { Projectile.Kill(); return; }
+
+            // 卡肉顿帧（§三.1）：命中后冻结自身计时 3 帧，刀刃在肉体中悬停
+            if (_hitstop > 0) { _hitstop--; return; }
+
+            // 特殊招式走独立状态机（§一.3/§一.4）
+            if (Kind == MalachiteMelee.MoveKind.Dive) { DiveAI(owner); return; }
+            if (Kind == MalachiteMelee.MoveKind.Thrust) { ThrustAI(owner); return; }
 
             int step = Math.Clamp(SlashStep, 0, MalachiteMelee.ComboMaxSteps - 1);
             SwingArc(step, out float start, out float end);
@@ -198,6 +208,22 @@ namespace 可成长的孔雀翎
             var mp = owner.GetModPlayer<MalachitePlayer>();
             mp.PrecisionStacks = Math.Min(MalachiteMelee.PrecisionMaxStacks, mp.PrecisionStacks + 1);
             mp.PrecisionTimer = MalachiteMelee.PrecisionDuration;
+
+            // 段2 挑击：施加向上浮空（§一.1）
+            if (Kind == MalachiteMelee.MoveKind.Step && SlashStep == 1)
+            {
+                target.velocity.Y -= 6f;
+                target.netUpdate = true;
+            }
+
+            // 卡肉顿帧（§三.1）：命中→自身/玩家/目标速度骤降，硬直
+            if (_hitstop <= 0)
+            {
+                _hitstop = 3;
+                owner.velocity *= 0.1f;
+                _shakeT = Math.Max(_shakeT, 2f);
+            }
+            target.velocity *= 0.1f;
 
             if (Kind == MalachiteMelee.MoveKind.Upper && !_upperHit)
             {
@@ -288,13 +314,19 @@ namespace 可成长的孔雀翎
                 : step switch { 0 => MalachitePalette.GreenBright, 1 => Color.White, _ => MalachitePalette.AccentGold };
 
             Vector2 jit = _shakeT > 0f ? Main.rand.NextVector2Circular(_shakeT * 0.30f, _shakeT * 0.30f) : Vector2.Zero;
+            if (_hitstop > 0) jit += Main.rand.NextVector2Circular(3f, 3f); // 卡肉期高频微震（§三.2）
             Vector2 oc = owner.Center + jit;
             Vector2 pivot = oc - Main.screenPosition;
             float holdFade = _age > SweepEnd
                 ? MathHelper.Lerp(1f, 0.5f, (_age - SweepEnd) / (float)Math.Max(1, MalachiteMelee.SwingHoldFrames + ExtraHold))
                 : 1f;
 
-            // ① 绘制底层扇形刀光网格（执行完毕后 SpriteBatch 会保持在 Additive 状态）
+            // ① 特殊招式（下砸/突进）走独立绘制；普通招式绘制扇形刀光网格
+            if (Kind == MalachiteMelee.MoveKind.Dive || Kind == MalachiteMelee.MoveKind.Thrust)
+            {
+                DrawModeCore(oc, tint, holdFade);
+                return;
+            }
             DrawFanStrip(oc, tint, holdFade);
 
             Vector2 curScale = new Vector2(_sx[n - 1], _sy[n - 1]) * _sc[n - 1];
@@ -333,6 +365,214 @@ namespace 可成长的孔雀翎
             Main.spriteBatch.End();
             Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
                 DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.GameViewMatrix.TransformationMatrix);
+        }
+
+        // ============ 特殊招式状态机（§一.3 下砸 / §一.4 突进）============
+
+        private void RecordPose()
+
+        {
+
+            float artScale = (MalachiteMelee.StepReach(0) * 0.9f) / MalachiteMelee.SlashArtWidth;
+
+            _th.Add(Projectile.rotation);
+
+            _sc.Add(artScale);
+
+            _sx.Add(1f);
+
+            _sy.Add(1f);
+
+            _tip.Add(Projectile.Center);
+
+            TrimHistory();
+
+        }
+
+
+        /// <summary>空中俯冲下砸：跟随玩家斜下刺击；触地/碰块触发冲击。</summary>
+
+        private void DiveAI(Player owner)
+
+        {
+
+            Projectile.friendly = true;
+
+            Projectile.rotation = MathHelper.PiOver2;
+
+            Projectile.Center = owner.Center + new Vector2(SlashDir * 10f, 30f);
+
+            RecordPose();
+
+            if (_age > 3 && !_impactDone)
+
+            {
+
+                bool landed = owner.velocity.Y == 0f;
+
+                bool hitTile = Collision.SolidCollision(Projectile.position, Projectile.width, Projectile.height);
+
+                if (landed || hitTile) Impact();
+
+            }
+
+            if (_impactT > 0) _impactT--;
+
+            if (_age > 60) { Projectile.Kill(); return; }
+
+            _age++;
+
+        }
+
+
+        /// <summary>冲刺居合突进：跟随玩家前突，沿途穿透并留下延时斩线（纹章）。</summary>
+
+        private void ThrustAI(Player owner)
+
+        {
+
+            Projectile.friendly = true;
+
+            Projectile.rotation = SlashDir > 0 ? 0f : MathHelper.Pi;
+
+            Projectile.Center = owner.Center + new Vector2(SlashDir * 54f, 2f);
+
+            RecordPose();
+
+            if (_age == 2)
+
+            {
+
+                Vector2 crestPos = owner.Center + new Vector2(SlashDir * 40f, -6f);
+
+                Projectile.NewProjectile(Projectile.GetSource_FromAI(), crestPos, Vector2.Zero,
+
+                    ModContent.ProjectileType<EsCrestSigilProj>(), Math.Max(1, (int)(Projectile.damage * 0.75f)), 2f, Projectile.owner, (float)Kind, 0f);
+
+            }
+
+            if (_age >= 16) { Projectile.Kill(); return; }
+
+            _age++;
+
+        }
+
+
+        /// <summary>下砸触地：重击震屏 + 十字冲击波 + 范围伤害一次。</summary>
+
+        private void Impact()
+
+        {
+
+            _impactDone = true;
+
+            _impactT = 12;
+
+            ScreenShakeSystem.Shake(8f);
+
+            SoundEngine.PlaySound(SoundID.Item14 with { Volume = 0.8f, Pitch = -0.25f }, Projectile.Center);
+
+            int dmg = Math.Max(1, (int)(Projectile.damage * 1.2f));
+
+            Rectangle zone = new Rectangle((int)Projectile.Center.X - 80, (int)Projectile.Center.Y - 80, 160, 160);
+
+            for (int i = 0; i < Main.maxNPCs; i++)
+
+            {
+
+                NPC npc = Main.npc[i];
+
+                if (!npc.active || npc.friendly || !npc.Hitbox.Intersects(zone)) continue;
+
+                NPC.HitInfo hi = new NPC.HitInfo { Damage = dmg, Knockback = 6f, HitDirection = npc.Center.X < Projectile.Center.X ? 1 : -1, DamageType = MindDamageClass.Instance };
+
+                npc.StrikeNPC(hi);
+
+                npc.velocity.Y -= 8f;
+
+                npc.netUpdate = true;
+
+            }
+
+        }
+
+
+        /// <summary>下砸/突进的 Additive 绘制：刃身 + 速度残线 + （下砸）十字冲击波/扩散环。绘制后严格还原批次。</summary>
+
+        private void DrawModeCore(Vector2 oc, Color tint, float holdFade)
+
+        {
+
+            if (_th.Count == 0) return;
+
+            Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
+
+            Vector2 origin = new Vector2(0f, MalachiteMelee.SlashArtPivotY);
+
+            Vector2 curScale = new Vector2(_sx[_sx.Count - 1], _sy[_sy.Count - 1]) * _sc[_sc.Count - 1];
+
+            float rot = _th[_th.Count - 1];
+
+            Vector2 pivot = oc - Main.screenPosition;
+
+
+            Main.spriteBatch.End();
+
+            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, SamplerState.LinearClamp,
+
+                DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
+
+
+            Main.spriteBatch.Draw(tex, pivot, null, tint * (0.9f * MalachiteMelee.SlashArtAlpha * holdFade), rot, origin, curScale, SpriteEffects.None, 0f);
+
+            Main.spriteBatch.Draw(tex, pivot, null, Color.White * (0.7f * MalachiteMelee.SlashArtAlpha * holdFade), rot, origin, curScale * 0.9f, SpriteEffects.None, 0f);
+
+            // 速度残线（朝运动反方向拉出）
+
+            Vector2 back = Kind == MalachiteMelee.MoveKind.Dive ? -Vector2.UnitY : -new Vector2((float)Math.Cos(rot), (float)Math.Sin(rot));
+
+            for (int k = 1; k <= 3; k++)
+
+                DrawSeg(oc + back * (46f * k), oc + back * (46f * k + 18f), 3f, tint * (0.5f * holdFade / k));
+
+
+            if (_impactT > 0 && Kind == MalachiteMelee.MoveKind.Dive)
+
+            {
+
+                float t = _impactT / 12f;
+
+                float L = 120f * (1f - t) + 40f;
+
+                DrawSeg(oc - Vector2.UnitX * L, oc + Vector2.UnitX * L, 7f, Color.White * t);
+
+                DrawSeg(oc - Vector2.UnitY * L, oc + Vector2.UnitY * L, 7f, Color.White * t);
+
+                for (int s = 0; s < 12; s++)
+
+                {
+
+                    float rr = 40f + (1f - t) * 90f;
+
+                    float a0 = MathHelper.TwoPi * s / 12f;
+
+                    float a1 = MathHelper.TwoPi * (s + 1) / 12f;
+
+                    DrawSeg(oc + new Vector2((float)Math.Cos(a0), (float)Math.Sin(a0)) * rr,
+
+                            oc + new Vector2((float)Math.Cos(a1), (float)Math.Sin(a1)) * rr, 3f, tint * t);
+
+                }
+
+            }
+
+
+            Main.spriteBatch.End();
+
+            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
+
+                DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.GameViewMatrix.TransformationMatrix);
+
         }
 
         /// <summary>

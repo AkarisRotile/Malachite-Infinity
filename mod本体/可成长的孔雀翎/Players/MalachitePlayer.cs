@@ -273,12 +273,19 @@ namespace 可成长的孔雀翎
             }
         }
 
-        /// <summary>点按 F 的段击：地面上方向「上」→ 上挑斩；否则普通连段。</summary>
+        /// <summary>点按 F 的招式分支（§一）：冲刺阶段→居合突进；空中+下→俯冲下砸；上方向→对空挑斩；否则地面三连段。</summary>
         private void DoQuickMeleeStrike()
         {
-            bool uppercut = Player.controlUp && Player.velocity.Y == 0f && !Player.controlJump;
             int wd = Player.HeldItem != null ? Player.GetWeaponDamage(Player.HeldItem) : 32;
-            if (uppercut)
+            int now = (int)Main.GameUpdateCount;
+            bool dashing = now - LastDashTick <= MalachiteMelee.DashImmuneTime; // 冲刺（含双击突进斩阶段）
+            bool airborne = Player.velocity.Y != 0f;
+
+            if (dashing)
+                MalachiteMelee.FireThrust(Player, wd);
+            else if (airborne && Player.controlDown)
+                MalachiteMelee.FireDive(Player, wd);
+            else if (Player.controlUp)
                 MalachiteMelee.UppercutStrike(Player, Player.GetSource_Misc("MalachiteMelee"), wd);
             else
                 MalachiteMelee.TryMeleeStrike(Player, Player.GetSource_Misc("MalachiteMelee"), wd, 4f);

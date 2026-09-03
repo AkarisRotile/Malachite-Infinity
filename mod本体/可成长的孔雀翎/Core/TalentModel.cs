@@ -192,8 +192,9 @@ namespace 可成长的孔雀翎
         /// <summary>刃长随挥动的脉动幅度（半径 ×(1+该值)，过冲处最大）。</summary>
         public const float SwingReachPulse = 0.08f;
         // 弧度语义：0 = 朝前水平；负值 = 向上（屏幕 Y 向下，sin<0 即上）。
-        private static readonly float[] StepStartRadL = { 0.45f, -0.55f, 0.25f };
-        private static readonly float[] StepEndRadL = { -1.05f, 1.0f, -1.25f };
+        // ES 三连段（v6.3）：段1 左上→右下重劈 ~150°(2.6rad)；段2 右下→左上挑击 ~140°(2.44rad)；段3 大跨步回旋 ~200°(3.5rad)。
+        private static readonly float[] StepStartRadL = { -1.10f, 1.30f, 2.90f };
+        private static readonly float[] StepEndRadL = { 1.50f, -1.14f, -0.60f };
         /// <summary>每段挥动半径（px，即攻击范围，越后段越大；2026-09-03 实机要求≈2倍：96/108/128 → 200/225/256）。</summary>
         private static readonly float[] StepReachArr = { 200f, 225f, 256f };
         /// <summary>每段刃身大小倍率。</summary>
@@ -285,13 +286,13 @@ namespace 可成长的孔雀翎
             float kb = Math.Max(1f, knockback + step);
 
             if (step == 2)
-                player.velocity.X = dir * 6f; // 第三段小突进（手感：连段有"推出去"感）
+                player.velocity.X += dir * 4f; // 第三段大跨步回旋：小幅向前推进动量（§一.1）
 
             SpawnSlash(player, source, dmg, kb, dir, step);
             // 出刀音阶随段位爬升：段1/2/3 音调递进，段3 换重音（手感递进）
             SoundEngine.PlaySound(step == 2 ? SoundID.Item71 with { Pitch = 0.05f } : SoundID.Item15 with { Pitch = step * 0.12f }, player.Center);
             if (step == 2 && player.whoAmI == Main.myPlayer)
-                ScreenShakeSystem.Shake(3.5f); // 段3 收尾轻震
+                ScreenShakeSystem.Shake(8f); // 段3 终结重击震屏（§三.3）
         }
 
         /// <summary>双击方向触发突进斩：位移 + 短暂无敌 + 大号斩击。</summary>
@@ -340,8 +341,10 @@ namespace 可成长的孔雀翎
         {
             Step = 0,      // 普通段击（F 连打）
             Charged = 1,   // 蓄力重斩（按住 ≥ ChargeFrames 松手）
-            Upper = 2,     // 上挑斩（地面上 + F）
+            Upper = 2,     // 上挑斩（按住上方向 + F）
             Finisher = 3,  // 满月终结（精准满层 + 蓄力松手）
+            Dive = 4,      // 空中俯冲下砸（空中按住下方向 + F）
+            Thrust = 5,    // 冲刺居合突进（冲刺阶段 + F）
         }
 
         /// <summary>进入蓄力态所需按住帧数（16 ≈ 0.27s @60fps）。</summary>
@@ -353,7 +356,7 @@ namespace 可成长的孔雀翎
 
         // 各招弧线（基准朝右弧度 start→end；弹幕内按朝向镜像）
         private static readonly float[] ChargedArc = { 1.15f, -1.15f };   // 大横斩（过前胸的大弧）
-        private static readonly float[] UpperArc = { 0.75f, -2.30f };     // 上挑（下前→上后的大仰弧）
+        private static readonly float[] UpperArc = { 1.05f, -2.45f };     // 上挑（自下而上大范围仰弧 ~200°）
         private static readonly float[] FinisherArc = { 1.70f, -1.70f };  // 满月（近 180°+ 巨弧）
 
         /// <summary>朝右基准角 → 实际朝向角（1 右原样 / -1 左水平镜像）。</summary>
@@ -388,12 +391,35 @@ namespace 可成长的孔雀翎
             int dmg = Math.Max(1, (int)(damage * mult * 1.1f));
             // 小跳跃起步（纯手感：上挑带腾身）
             if (player.velocity.Y == 0f)
-                player.velocity.Y = -6.5f;
+                player.velocity.Y = -7f; // 地对空带人浮空（§一.2）
             SpawnMove(player, source, dmg, 7f, dir,
                 UpperArc[0], UpperArc[1], 1.05f, 1.10f, MoveKind.Upper, 0);
             SoundEngine.PlaySound(SoundID.Item15 with { Volume = 0.7f, Pitch = 0.35f }, player.Center);
             if (player.whoAmI == Main.myPlayer)
                 ScreenShakeSystem.Shake(4f); // 上挑轻震
+        }
+
+        /// <summary>空中俯冲下砸（Bors）：斜下高速俯冲，触地/碰块后震屏+十字冲击波（弹幕内实现）。</summary>
+        public static void FireDive(Player player, float damage)
+        {
+            int dir = player.direction != 0 ? player.direction : 1;
+            var mp = player.GetModPlayer<MalachitePlayer>();
+            int dmg = Math.Max(1, (int)(damage * PrecisionDamageMult(mp.PrecisionStacks)));
+            player.velocity = new Vector2(dir * 6f, 16f); // 高速斜下刺向地面
+            SpawnMove(player, player.GetSource_Misc("MalachiteMove"), dmg, 8f, dir, 0f, 0f, 1f, 1f, MoveKind.Dive, 0);
+            SoundEngine.PlaySound(SoundID.Item71 with { Volume = 0.7f, Pitch = -0.35f }, player.Center);
+        }
+
+        /// <summary>冲刺居合突进（Gawain）：无敌帧 10 帧 + 向前瞬突，沿途穿透并留下延时斩线（纹章）。</summary>
+        public static void FireThrust(Player player, float damage)
+        {
+            int dir = player.direction != 0 ? player.direction : 1;
+            var mp = player.GetModPlayer<MalachitePlayer>();
+            int dmg = Math.Max(1, (int)(damage * PrecisionDamageMult(mp.PrecisionStacks)));
+            player.immuneTime = Math.Max(player.immuneTime, 10); // 冲刺居合无敌帧
+            player.velocity.X = dir * 22f;                      // 向前瞬突（8~12 物块量级）
+            SpawnMove(player, player.GetSource_Misc("MalachiteMove"), dmg, 7f, dir, 0f, 0f, 1f, 1f, MoveKind.Thrust, 0);
+            SoundEngine.PlaySound(SoundID.Item1 with { Volume = 0.6f, Pitch = 0.2f }, player.Center);
         }
 
         /// <summary>生成自定义招式斩击弹幕（绕玩家弧线挥动，见 MeleeSlashProj）。</summary>
