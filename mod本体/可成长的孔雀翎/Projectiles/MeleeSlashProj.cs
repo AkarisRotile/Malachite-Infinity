@@ -3,8 +3,8 @@
 // - 挥动/刀光管线（学习后自主实现，未复制源码）：
 //   CalamityOverhaul（MIT, (c) hocha113）OniSlash/OniSlashRenderer 与 CalamityEntropy（社区开源）
 //   TlipocasScytheHeld 的通用管线：手持弹幕 + 缓动状态机 + 顶点扇形条带(TriangleStrip) +
-//   Immediate/Additive 批次 + GameViewMatrix 缩放矩阵 + 严格状态还原。
-//   本实现为自主编写；着色部分用 FNA 内置 BasicEffect(顶点色) 替代其自定义 HLSL——
+//   Additive 发光混合 + 纹理映射 + GameViewMatrix.TransformationMatrix 视口变换 + 严格状态还原。
+//   本实现为自主编写；着色用 FNA 内置 BasicEffect（TextureEnabled + 顶点色）替代自定义 HLSL——
 //   因 tModLoader 不会把 .fx 编译进包（需预编译 .xnb 工具链，另行自建）。
 // - 挥动贴图：用户自绘 MeleeSlash.png（圆心=最左像素）。
 // 本文件为自主实现。
@@ -283,30 +283,33 @@ namespace 可成长的孔雀翎
                 ? MathHelper.Lerp(1f, 0.5f, (_age - SweepEnd) / (float)Math.Max(1, MalachiteMelee.SwingHoldFrames + ExtraHold))
                 : 1f;
 
-            // ① 刀光：动态扇形顶点网格（指南管线：End → Immediate/Additive → DrawUserPrimitives → 严格还原）
+            // ① 绘制底层扇形刀光网格（执行完毕后 SpriteBatch 会保持在 Additive 状态）
             DrawFanStrip(oc, tint, holdFade);
 
-            // ② 刃身本体（还原后的默认批次内）：本体 + 一层柔和外晕，不再叠残影
             Vector2 curScale = new Vector2(_sx[n - 1], _sy[n - 1]) * _sc[n - 1];
-            Main.spriteBatch.Draw(tex, pivot, null, tint * (0.22f * MalachiteMelee.SlashArtAlpha),
-                _th[n - 1], origin, curScale * 1.30f, SpriteEffects.None, 0f);
-            Main.spriteBatch.Draw(tex, pivot, null,
-                new Color(MalachiteMelee.SlashArtBrightness, MalachiteMelee.SlashArtBrightness, MalachiteMelee.SlashArtBrightness) * MalachiteMelee.SlashArtAlpha,
-                _th[n - 1], origin, curScale, SpriteEffects.None, 0f);
-            Main.spriteBatch.Draw(tex, pivot, null, Color.White * (0.6f * MalachiteMelee.SlashArtAlpha),
-                _th[n - 1], origin, curScale * 0.92f, SpriteEffects.None, 0f);
 
-            // ③ 击中反馈：扩散环 + 砍痕闪刃
+            // ② 绘制刃身贴图（均处于 Additive 发光混合下）
+            // 刃身外晕
+            Main.spriteBatch.Draw(tex, pivot, null, tint * (0.40f * MalachiteMelee.SlashArtAlpha * holdFade),
+                _th[n - 1], origin, curScale * 1.25f, SpriteEffects.None, 0f);
+            // 刃身本体
+            Main.spriteBatch.Draw(tex, pivot, null,
+                tint * (MalachiteMelee.SlashArtBrightness * MalachiteMelee.SlashArtAlpha * holdFade),
+                _th[n - 1], origin, curScale, SpriteEffects.None, 0f);
+            // 白热芯（高亮居合切痕）
+            Main.spriteBatch.Draw(tex, pivot, null, Color.White * (0.80f * MalachiteMelee.SlashArtAlpha * holdFade),
+                _th[n - 1], origin, curScale * 0.90f, SpriteEffects.None, 0f);
+
+            // ③ 击中反馈环与划痕
             if (_hitFx > 0)
             {
                 float t = _hitFx / (float)MalachiteMelee.HitFlashFrames;
                 float ringR = MalachiteMelee.HitRingMaxR * KindRingK() * (1f - t) + 5f;
                 Color rc = Color.Lerp(Color.White, tint, 0.4f) * (0.9f * t);
-                int segs = 14;
-                for (int s = 0; s < segs; s++)
+                for (int s = 0; s < 14; s++)
                 {
-                    float a0 = MathHelper.TwoPi * s / segs;
-                    float a1 = MathHelper.TwoPi * (s + 1) / segs;
+                    float a0 = MathHelper.TwoPi * s / 14f;
+                    float a1 = MathHelper.TwoPi * (s + 1) / 14f;
                     DrawSeg(_hitPos + jit + new Vector2((float)Math.Cos(a0), (float)Math.Sin(a0)) * ringR,
                             _hitPos + jit + new Vector2((float)Math.Cos(a1), (float)Math.Sin(a1)) * ringR, 2.5f, rc);
                 }
@@ -314,60 +317,100 @@ namespace 可成长的孔雀翎
                 DrawSeg(_hitPos + jit - hd * (MalachiteMelee.HitSlashLen * 0.55f),
                         _hitPos + jit + hd * (MalachiteMelee.HitSlashLen * 0.45f), 3.5f, Color.White * (0.85f * t));
             }
+
+            // 严格还原为默认的 AlphaBlend 批次状态，避免污染游戏后续绘制
+            Main.spriteBatch.End();
+            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
+                DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.GameViewMatrix.TransformationMatrix);
         }
 
         /// <summary>
-        /// 刀光扇形网格：历史角采样 → 内缘/外缘双轨顶点 → TriangleStrip。
-        /// 指南规则1：顶点先乘 GameViewMatrix.ZoomMatrix 再正交投影（任意缩放不错位）；
-        /// 指南规则3：绘制后严格还原 Deferred/AlphaBlend/CullCounterClockwise。
+        /// 刀光扇形网格：32段平滑历史插值采样 → 纹理映射 → 正确矩阵投影与 Additive 混合
+        /// （顶点=world−screen 坐标；View 由 GameViewMatrix.TransformationMatrix 统一接管，不再手动乘 ZoomMatrix）
         /// </summary>
         private void DrawFanStrip(Vector2 oc, Color tint, float holdFade)
         {
             int n = _th.Count;
             if (n < 2) return;
-            int cnt = Math.Min(n, 32);
-            for (int i = 0; i < cnt; i++)
+
+            // 固定采样 32 个细分段（共 64 个顶点），将离散历史点平滑化
+            const int subdivisions = 32;
+
+            for (int i = 0; i < subdivisions; i++)
             {
-                int idx = n - cnt + i;
-                float u = cnt == 1 ? 0f : i / (float)(cnt - 1);
-                float th = _th[idx];
-                float r = _sc[idx] * MalachiteMelee.SlashArtWidth * _sx[idx];
+                // u: 0.0 (尾部消散端) -> 1.0 (刀刃当前端)
+                float u = i / (float)(subdivisions - 1);
+
+                // 在历史记录中进行线性插值，彻底消除折线感
+                float sampleIdx = u * (n - 1);
+                int idx0 = (int)sampleIdx;
+                int idx1 = Math.Min(idx0 + 1, n - 1);
+                float frac = sampleIdx - idx0;
+
+                float th = MathHelper.Lerp(_th[idx0], _th[idx1], frac);
+                float sc = MathHelper.Lerp(_sc[idx0], _sc[idx1], frac);
+                float sx = MathHelper.Lerp(_sx[idx0], _sx[idx1], frac);
+
+                float r = sc * MalachiteMelee.SlashArtWidth * sx;
                 Vector2 dd = new Vector2((float)Math.Cos(th), (float)Math.Sin(th));
+
                 float headK = Math.Clamp(u * 1.35f, 0f, 1f);
-                float tailFade = (0.22f + 0.78f * u) * holdFade;
-                Color colIn = Color.Lerp(tint, Color.White, headK) * (tailFade * 0.55f);
+                float tailFade = (0.05f + 0.95f * (float)Math.Pow(u, 1.5f)) * holdFade;
+
+                Color colIn = Color.Lerp(tint, Color.White, headK) * (tailFade * 0.4f);
                 Color colOut = Color.Lerp(tint, Color.White, Math.Clamp(u * 1.6f, 0f, 1f)) * tailFade;
-                if (i == cnt - 1) colOut = Color.White * tailFade;
-                if (_flash > 0) { colIn = Color.Lerp(colIn, Color.White, 0.35f); colOut = Color.Lerp(colOut, Color.White, 0.5f); }
+                if (i == subdivisions - 1) colOut = Color.White * tailFade;
+                if (_flash > 0) { colIn = Color.Lerp(colIn, Color.White, 0.4f); colOut = Color.Lerp(colOut, Color.White, 0.6f); }
+
+                // 顶点采用相对屏幕坐标（严禁手动乘 ZoomMatrix）
                 Vector2 pIn = oc + dd * (r * MalachiteMelee.PathInnerK) - Main.screenPosition;
                 Vector2 pOut = oc + dd * r - Main.screenPosition;
-                _fanVerts[i * 2] = new VertexPositionColorTexture(new Vector3(Vector2.Transform(pIn, Main.GameViewMatrix.ZoomMatrix), 0f), colIn, new Vector2(u, 0f));
-                _fanVerts[i * 2 + 1] = new VertexPositionColorTexture(new Vector3(Vector2.Transform(pOut, Main.GameViewMatrix.ZoomMatrix), 0f), colOut, new Vector2(u, 1f));
+
+                _fanVerts[i * 2] = new VertexPositionColorTexture(new Vector3(pIn, 0f), colIn, new Vector2(u, 0f));
+                _fanVerts[i * 2 + 1] = new VertexPositionColorTexture(new Vector3(pOut, 0f), colOut, new Vector2(u, 1f));
             }
 
+            // 挂起当前的 SpriteBatch 批次
             Main.spriteBatch.End();
-            Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Additive, Main.DefaultSamplerState,
-                DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
 
+            // 初始化或配置 BasicEffect
             if (_fanFx == null)
             {
                 _fanFx = new BasicEffect(Main.graphics.GraphicsDevice)
                 {
                     VertexColorEnabled = true,
-                    TextureEnabled = false,
+                    TextureEnabled = true, // 启用贴图
                     LightingEnabled = false,
                     FogEnabled = false
                 };
             }
-            _fanFx.World = Matrix.Identity;
-            _fanFx.View = Matrix.Identity;
-            _fanFx.Projection = Matrix.CreateOrthographicOffCenter(0f, Main.screenWidth, Main.screenHeight, 0f, 0f, 1f);
-            foreach (EffectPass pass in _fanFx.CurrentTechnique.Passes) pass.Apply();
-            Main.graphics.GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleStrip, _fanVerts, 0, cnt * 2 - 2);
 
-            Main.spriteBatch.End();
-            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
-                DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.GameViewMatrix.TransformationMatrix);
+            // 正确矩阵赋值：View 统一由 TransformationMatrix 接管
+            _fanFx.World = Matrix.Identity;
+            _fanFx.View = Main.GameViewMatrix.TransformationMatrix;
+            _fanFx.Projection = Matrix.CreateOrthographicOffCenter(0f, Main.screenWidth, Main.screenHeight, 0f, 0f, 1f);
+
+            // 贴图绑定：优先专用刀光流线贴图，否则回退本模组 1x1 白（弹幕禁用原版 MagicPixel，见 R6）
+            Texture2D trailTex = ModContent.HasAsset("可成长的孔雀翎/Textures/SlashTrail")
+                ? ModContent.Request<Texture2D>("可成长的孔雀翎/Textures/SlashTrail").Value
+                : AdditiveLayer.Pixel;
+            _fanFx.Texture = trailTex;
+
+            // 硬件渲染状态：Additive 发光
+            Main.graphics.GraphicsDevice.BlendState = BlendState.Additive;
+            Main.graphics.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
+            Main.graphics.GraphicsDevice.DepthStencilState = DepthStencilState.None;
+            Main.graphics.GraphicsDevice.SamplerStates[0] = SamplerState.LinearClamp;
+
+            foreach (EffectPass pass in _fanFx.CurrentTechnique.Passes) pass.Apply();
+
+            int vertexCount = subdivisions * 2;
+            int primitiveCount = vertexCount - 2;
+            Main.graphics.GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleStrip, _fanVerts, 0, primitiveCount);
+
+            // 重新开启 SpriteBatch，直接进入 Additive 混合模式以配合后续发光层绘制
+            Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, SamplerState.LinearClamp,
+                DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
         }
     }
 }
