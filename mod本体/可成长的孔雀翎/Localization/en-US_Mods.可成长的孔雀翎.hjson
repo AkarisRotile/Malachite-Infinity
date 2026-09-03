@@ -23,6 +23,7 @@ Projectiles: {
 	MalachiteCataclysm.DisplayName: Malachite Cataclysm
 	MalachiteCataFist.DisplayName: Malachite Cata Fist
 	MalachiteCataSlash.DisplayName: Malachite Cata Slash
+	EsCrestSigilProj.DisplayName: 空间纹章 / Es Crest Sigil
 }
 
 Configs: {

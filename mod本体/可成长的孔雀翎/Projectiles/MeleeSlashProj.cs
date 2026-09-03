@@ -52,6 +52,7 @@ namespace 可成长的孔雀翎
         private Vector2 _hitDir = Vector2.UnitX;
         private bool _upperHit = false;
         private float _shakeT = 0f;
+        private bool _crestSpawned = false; // 每记挥击只留一枚纹章
 
         private readonly List<float> _th = new List<float>();
         private readonly List<float> _sc = new List<float>();
@@ -135,6 +136,16 @@ namespace 可成长的孔雀翎
                 if (since == 0 && Kind != MalachiteMelee.MoveKind.Step && Projectile.owner == Main.myPlayer)
                     _shakeT = Kind == MalachiteMelee.MoveKind.Finisher ? 7f : 5f;
                 if (p >= MalachiteMelee.SwingBurstEnd && _flash == 0) _flash = 3;
+
+                // 急速挥击帧（since == 2）：在刀刃外弧轨迹中心留下 ES 空间纹章（Crest Arts，75% 二次打击）
+                if (since == 2 && !_crestSpawned)
+                {
+                    _crestSpawned = true;
+                    Vector2 crestPos = owner.Center + new Vector2((float)Math.Cos(theta), (float)Math.Sin(theta)) * (reachBase * pulse * 0.72f);
+                    int sigDmg = Math.Max(1, (int)(Projectile.damage * 0.75f));
+                    Projectile.NewProjectile(Projectile.GetSource_FromAI(), crestPos, Vector2.Zero,
+                        ModContent.ProjectileType<EsCrestSigilProj>(), sigDmg, 2f, Projectile.owner, (float)Kind, 0f);
+                }
 
                 float scaleFactor = Kind == MalachiteMelee.MoveKind.Step ? MalachiteMelee.StepScale(step) : ScaleMult;
                 float artScale = reachBase * pulse * scaleFactor / MalachiteMelee.SlashArtWidth;
