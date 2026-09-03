@@ -54,8 +54,16 @@ namespace 可成长的孔雀翎
                 if (!_fxProbeDone)
                 {
                     _fxProbeDone = true;
-                    try { _slashFx = ModContent.Request<Effect>("可成长的孔雀翎/Effects/SlashArc").Value; }
-                    catch { _slashFx = null; }
+                    // 同步加载并把所有异常吞掉：源码/JIT(开发)模式下 tML 不编译 .fx，资产必然不存在；
+                    // 若用同步 Request 仍抛错会漏到主线程绘制栈（见 2026-09-03 client.log 事故），故必须就地吞掉并回退 sprite 光带。
+                    try
+                    {
+                        _slashFx = ModContent.Request<Effect>("可成长的孔雀翎/Effects/SlashArc", ReLogic.Content.AssetRequestMode.ImmediateLoad).Value;
+                    }
+                    catch
+                    {
+                        _slashFx = null;
+                    }
                 }
                 return _slashFx != null;
             }
