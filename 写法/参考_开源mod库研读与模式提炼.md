@@ -8,7 +8,7 @@
 
 ## 一、定级总表（实读取证）
 
-| 库 | 仓库 | 许可（实读） | 级别 | 一句话口径 |
+| 库 | 仓库 | 许可（实读） | 级别 | 定级依据 |
 |---|---|---|---|---|
 | tModLoader（含 ExampleMod） | github.com/tModLoader/tModLoader | MIT（根 LICENSE 1056B） | **A** | 官方示例=权威写法来源，可直接照做/复用 |
 | Luminance | github.com/LucilleKarma/Luminance（原 RandomDoggo 已 404） | MIT（Copyright (c) 2026 Lucille） | **A** | 现代框架层最佳参照物（活跃 2026-08） |

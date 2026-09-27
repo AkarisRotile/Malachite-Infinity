@@ -7,7 +7,7 @@
 //
 // 职责边界（2026-09-27 拆分后）：
 //   · Core\StarWebLayout.cs —— 节点表 / 边表 / 几何 / 纯查询。**零 Terraria 依赖**，
-//     供游戏端与 工具\VfxPreview 离线预览台共用（这是能离线出图验证星网外观的前提）。
+//     供游戏端与任何其它宿主复用（UI / 弹幕 / 离屏渲染都读同一份，不会各自漂移）。
 //   · 本文件 —— 需要 Terraria 的那一半：击杀门槛（NPC.downed* / Main.hardMode）、
 //     购买/退还/洗点、连通性校验、旧档迁移、存活集合净化。
 //
@@ -79,7 +79,7 @@ namespace 可成长的孔雀翎
         // ==================== 文案取用（Terraria 侧）====================
         //
         // 为什么文案不放在 StarNode 上：那需要 MalachiteData.Loc（Terraria 侧），
-        // 会把 StarNode 拖出"零 Terraria 依赖"，导致离线预览台无法链接、星网没法出图。
+        // 会把 StarNode 拖出"零 Terraria 依赖"，让这一层再也无法被非 Terraria 宿主复用。
         // 因此"纯数据"留在 StarWebLayout/StarNode，"按语言取文案"留在本层。
 
         /// <summary>节点显示名（按当前语言）。</summary>

@@ -8,7 +8,7 @@
 //   （颜色只许 MalachitePalette）已被替换，几何与动效参数原样采纳。
 //
 // 铁律：
-//   · **零 Terraria 依赖**（只用 XNA + MalachitePalette）—— 与 PrimitiveVfx 同源，便于离线预览复用。
+//   · **零 Terraria 依赖**（只用 XNA + MalachitePalette）—— 与 PrimitiveVfx 同源，便于被任意宿主复用。
 //   · 不切换 SpriteBatch 批次；调用方须已处于 UI 绘制流程，本函数内部负责
 //     End → 图元批处理 → Begin(Additive) 的批次往返（与 VfxDraw.DrawConstellationMap 同模式）。
 //   · 全部走 PrimitiveVfx 的**批处理模式**：300+ 图元收敛为 1 次 draw call。
@@ -82,11 +82,11 @@ namespace 可成长的孔雀翎
         public const float NodeHitRadius = 16f;
 
         // ====================================================================
-        // UI 画布布局常量（**唯一出处**：游戏端 StarMapUI 与离线预览台都取这里）
+        // UI 画布布局常量（**唯一出处**：游戏端 StarMapUI 与任何离屏量测都取这里）
         // ====================================================================
         //
-        // 2026-09-27 血泪：这些值原先在 StarMapUI 与 工具\VfxPreview\Program.cs 各写一份，
-        // 我改了游戏端、预览台那处替换又静默失败 —— 结果"量测"的一直是旧布局，白追两轮溢出。
+        // 2026-09-27 血泪：这些值原先在 StarMapUI 与离屏量测侧各写一份，
+        // 我改了游戏端、另一处替换又静默失败 —— 结果"量测"的一直是旧布局，白追两轮溢出。
         // **几何常量只允许存在一份**（与 SlashTuning / WingTotalFrames 同一原则）。
 
         /// <summary>星网画布边长（px）。在 700×500 面板中占 (40,90,340,340)。</summary>
@@ -98,7 +98,7 @@ namespace 可成长的孔雀翎
         /// 且**节点视觉外延左右不对称**（实测右 28.5px / 左 14.2px）。
         /// 按外延反解：`cX ∈ [18.2 + 0.887R, 320.5 − 0.997R]`，R=152 时 = [153, 169]，取 161（左右各留 8px）；
         /// 纵向 `cY ∈ [166, 185]`，取 180。
-        /// <para/>⚠ 改动 `StarWebLayout` 的角度/半径后，**必须**重跑预览台并读 `STARWEB_BBOX` 与
+        /// <para/>⚠ 改动 `StarWebLayout` 的角度/半径后，**必须**重新离屏量测并读包围盒（`STARWEB_BBOX`）与
         /// `STARWEB_EXTREMES` 重新反解这里，否则星网会偏出画布。
         /// </summary>
         public static readonly Vector2 CanvasCenter = new Vector2(161f, 180f);

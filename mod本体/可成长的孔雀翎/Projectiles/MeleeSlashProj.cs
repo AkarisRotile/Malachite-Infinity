@@ -1382,7 +1382,7 @@ namespace 可成长的孔雀翎
         /// </summary>
         private void DrawFanStrip(Vector2 oc, Color tint, float holdFade)
         {
-            // 顶点构建已提取至 Core\Vfx\SlashVfx.cs（唯一出处：游戏内与 工具\VfxPreview 离线预览共用）
+            // 顶点构建已提取至 Core\Vfx\SlashVfx.cs（唯一出处：游戏内与 UI 共用）
             // 参数取自 Core\Vfx\SlashTuning.cs（同源）；deep 色用于内缘软融段，否则晶体截面少一层。
             int vertexCount = SlashVfx.BuildFanStrip(_th, _sc, _sx, oc, tint, MalachitePalette.GreenDeep,
                 SlashTuning.ActiveBand, holdFade,

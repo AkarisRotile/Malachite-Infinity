@@ -152,8 +152,6 @@ powershell -NoProfile -File .\写法\_tools\Mod-Gate.ps1
 | **源代码** | **MIT** —— 见 [LICENSE](LICENSE)，可自由使用、修改、分发 |
 | **角色立绘** | **不开源** ❌ 版权归画师，禁止再分发与商用 —— 见 [ASSETS.md](ASSETS.md) |
 
-简单说：**代码随便用，立绘别乱拿。**
-
 > Terraria © Re-Logic。本模组是非官方、非商业的粉丝作品，与 Re-Logic 无隶属或背书关系。
 
 ---

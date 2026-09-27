@@ -13,7 +13,7 @@ namespace 可成长的孔雀翎
 {
     /// <summary>
     /// 全弹幕特效的<strong>纯绘制数学</strong>：零 Terraria 依赖，只用 Microsoft.Xna.Framework 的 SpriteBatch。
-    /// - 出处：自各 Projectile 的 PreDraw 提取，提取后为<strong>唯一出处</strong>；游戏内与 工具\VfxPreview 离线预览共用同一份。
+    /// - 出处：自各 Projectile 的 PreDraw 提取，提取后为<strong>唯一出处</strong>：UI 与弹幕共用同一份。
     /// - 铁律一：本文件<strong>不得</strong> using Terraria.*。
     /// - 铁律二：本文件<strong>不负责</strong> SpriteBatch.Begin/End 与批次混合态的切换（那需要 Main.GameViewMatrix，属宿主职责）；
     ///   调用方必须在<strong>已 Begin 的 Additive/AlphaBlend 批次内</strong>调用，坐标系为屏幕空间（世界坐标 − Main.screenPosition）。
@@ -533,7 +533,7 @@ namespace 可成长的孔雀翎
 
         /// <summary>
         /// 渲染状态用的状态：星图绘制前会被 End 掉，画完必须**还原成 Additive** ——
-        /// 调用方（UI / 预览台）后续的发光层都依赖加色混合。此处曾一度写成 AlphaBlend，那会让整个星图失去发光。
+        /// 调用方（UI / 弹幕）后续的发光层都依赖加色混合。此处曾一度写成 AlphaBlend，那会让整个星图失去发光。
         /// </summary>
         private static readonly BlendState SigilRestoreBlend = BlendState.Additive;
 
@@ -767,7 +767,7 @@ namespace 可成长的孔雀翎
         public const float WingMaxPlumeLen = 195f;
 
         /// <summary>
-        /// 碧翎念涌的整体尺寸倍率（**唯一出处**：游戏端 MindWingsAura 与离线预览台都取这里）。
+        /// 碧翎念涌的整体尺寸倍率（**唯一出处**：游戏端 MindWingsAura 与任何离屏渲染都取这里）。
         /// <para/>终结技单翼用 3（巨大演出）；常驻版 1.2 —— 形状完全一致，只是别糊住视野。
         /// </summary>
         public const float MindWingSizeMult = 1.2f;
@@ -777,7 +777,7 @@ namespace 可成长的孔雀翎
         /// <para/>★ 2026-09-27 用户拍板 **false（单翼）**："保留单向的就可以了，双向的一整对翅膀太丑了。
         /// 这毕竟是个 2D 游戏" —— Terraria 侧视，人物永远侧身，对称一对会读成"背后贴了两片装饰"，
         /// 中间还会空出一块；单翼也天然与大招完全同构。
-        /// <para/>⚠ 放在本文件是为了让**预览台也读同一个值**：此前预览台自己写死 true，
+        /// <para/>⚠ 放在本文件是为了让**离屏渲染也读同一个值**：此前那里自己写死 true，
         /// 于是"我看到的图"和"游戏里跑的"不是一回事（2026-09-27 被视觉复查当场抓出）。
         /// </summary>
         public const bool MindWingBothSides = false;

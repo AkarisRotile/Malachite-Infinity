@@ -161,7 +161,7 @@ namespace 可成长的孔雀翎
 
         // 注意（2026-09-27）：本类**不提供** Name/Desc 这类"按当前语言取文案"的属性 ——
         // 那需要 MalachiteData.Loc（Terraria 侧），会把本文件拖出"零 Terraria 依赖"的边界，
-        // 于是 工具\VfxPreview 就无法链接它、星网也就没法离线出图。
+        // 于是整个星网层就无法脱离 Terraria 被复用。
         // 取文案请用 Terraria 侧的 StarNetwork.NameOf(node) / DescOf(node)，或直接读 NameZh/NameEn。
 
         public StarNode(string id, StarKind kind, float polarDeg, float polarR, int cost,

@@ -326,7 +326,7 @@ namespace 可成长的孔雀翎
             Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
             Color main = MalachitePalette.PrimaryGreen;
 
-            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与离线预览共用）
+            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与 UI 共用）
             VfxDraw.DrawKnifeTrail(Main.spriteBatch, tex, AdditiveLayer.Pixel,
                 Projectile.oldPos, Projectile.Center,
                 new Vector2(Projectile.width / 2f, Projectile.height / 2f),

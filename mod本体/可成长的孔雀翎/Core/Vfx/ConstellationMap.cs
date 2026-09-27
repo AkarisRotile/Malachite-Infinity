@@ -15,7 +15,7 @@
 // 观感约定：**星等越亮 = 等级越高**。即加点时优先点亮该星座最亮的星，
 // 高等级才轮到暗星 —— 这既符合天文直觉（亮星先被看见），也让进度读起来自然。
 //
-// 铁律：零 Terraria 依赖，只用 Microsoft.Xna.Framework（工具\VfxPreview 离线预览共用）。
+// 铁律：零 Terraria 依赖，只用 Microsoft.Xna.Framework。
 
 using System;
 using Microsoft.Xna.Framework;

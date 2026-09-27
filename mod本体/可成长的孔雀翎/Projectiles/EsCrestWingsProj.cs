@@ -118,7 +118,7 @@ namespace 可成长的孔雀翎
             Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, SamplerState.LinearClamp,
                 DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
 
-            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与离线预览共用）
+            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与 UI 共用）
             VfxDraw.DrawStaccatoMonowing(Main.spriteBatch, flareTex, bloomTex, pixelTex,
                 Projectile.Center - Main.screenPosition,
                 owner.direction, Tier, Timer, SnapFrames, MaxLifetime, SizeMult,

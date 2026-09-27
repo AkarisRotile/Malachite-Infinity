@@ -117,7 +117,7 @@ namespace 可成长的孔雀翎
         /// <para/>⚠ **节点视觉外延左右不对称**（实测：右 28.5px / 左 14.2px），所以不能按"居中"取 162，
 /// 而要按外延反解：`cX ∈ [14.2 + 0.887R, 310.5 − 0.997R]` → R=152 时 [149, 159]，取 154（左右各留 5px）。
 /// 纵向同理：`cY ∈ [166, 185]`，取 180。**改动节点表后必须重跑 STARWEB_BBOX/EXTREMES 并复核这里。**
-        /// <para/>量测方式：跑 `工具\VfxPreview`，读它打印的 `STARWEB_BBOX` 一行。
+        /// <para/>量测方式：跑一次离屏量测，读它打印的包围盒（`STARWEB_BBOX`）一行。
         /// **改动节点表的角度/半径后必须重跑一次并更新这里**，否则星网会偏出画布。
         /// </summary>
         public static readonly Vector2 LocalCenter = StarWebVfx.CanvasCenter;

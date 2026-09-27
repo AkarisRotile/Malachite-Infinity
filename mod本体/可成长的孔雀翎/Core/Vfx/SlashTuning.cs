@@ -4,17 +4,17 @@
 //   本文件为自主实现，未复制上述源码。
 //
 // 本文件为近战刀光的<strong>调参唯一出处</strong>：零 Terraria 依赖，只用 Microsoft.Xna.Framework。
-// 铁律：不得 using Terraria.*（一旦引入，工具\VfxPreview 离线预览工程即无法编译）。
+// 铁律：不得 using Terraria.*（一旦引入，本层即无法被非 Terraria 宿主复用）。
 //
-// 为什么要单独一份：此前参数只存在于 Core\MalachiteMelee.cs，而预览台 SlashLab.cs 是**手抄副本**
+// 为什么要单独一份：此前参数只存在于 Core\MalachiteMelee.cs，而离屏渲染侧是**手抄副本**
 // （其头注自己写着"数值变化时此文件必须同步，否则审阅失真"）。手抄必漂移，且漂移时预览失真最危险
-// ——看着很好，进游戏不对。现在预览台直接链接本文件，两边读到的是同一组数值。
+// ——看着很好，进游戏不对。现在离屏侧直接链接本文件，两边读到的是同一组数值。
 
 using Microsoft.Xna.Framework;
 
 namespace 可成长的孔雀翎
 {
-    /// <summary>刀光横截面档位（用于预览台对照，正式使用由 <see cref="SlashTuning.ActiveBand"/> 指定）。</summary>
+    /// <summary>刀光横截面档位（供离屏对照调参，正式使用由 <see cref="SlashTuning.ActiveBand"/> 指定）。</summary>
     public enum BandProfile
     {
         /// <summary>现状（单梭形：内缘 60% 主体色 + 外缘线性提亮到白）。</summary>
@@ -37,7 +37,7 @@ namespace 可成长的孔雀翎
         NonPremultiplied = 1
     }
 
-    /// <summary>一段横截面的配色（t=0 内缘 → 1 外缘）。纯数据，供游戏内与预览台共用。</summary>
+    /// <summary>一段横截面的配色（t=0 内缘 → 1 外缘）。纯数据，可被任意宿主复用。</summary>
     public struct BandStop
     {
         public float T;          // 归一化横向位置

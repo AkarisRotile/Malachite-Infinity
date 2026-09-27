@@ -277,7 +277,7 @@ namespace 可成长的孔雀翎
             Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, SamplerState.LinearClamp,
                 DepthStencilState.None, RasterizerState.CullNone, null, Main.GameViewMatrix.TransformationMatrix);
 
-            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与离线预览共用）
+            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与 UI 共用）
             VfxDraw.DrawCrestSigil(Main.spriteBatch, flareTex, bloomTex,
                 Projectile.Center - Main.screenPosition,
                 age, delay, _linger, _totalScale, _aspectX, _aspectY, Main.GameUpdateCount,

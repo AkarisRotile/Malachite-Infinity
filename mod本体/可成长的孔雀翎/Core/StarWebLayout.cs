@@ -19,7 +19,7 @@
 //
 // ★ 为什么数据表与本文件要单独存在（2026-09-27 拆分的理由）：
 //   星网的**几何**（节点位置、边）必须与**Terraria 逻辑**（击杀门槛/购买/退还）解耦，
-//   否则 `工具\VfxPreview` 离线预览台无法链接本文件（它不引用 Terraria 程序集），
+//   否则任何不引用 Terraria 程序集的宿主都无法链接本文件，
 //   星网就只能"进游戏才知道长什么样"。这与 SlashTuning / SlashVfx 的既有拆分是同一套原则：
 //   **几何与调色板零漂移，游戏端与预览端共用同一份源**。
 //   → Terraria 侧的门槛/购买/退还逻辑在 Core\StarNetwork.cs，本文件保持零 Terraria 依赖。
@@ -32,7 +32,7 @@ using Microsoft.Xna.Framework;
 
 namespace 可成长的孔雀翎
 {
-    /// <summary>星网几何与节点/边数据表（零 Terraria 依赖，游戏端与离线预览共用）。</summary>
+    /// <summary>星网几何与节点/边数据表（零 Terraria 依赖，可被任意宿主复用）。</summary>
     public static class StarWebLayout
     {
         // ==================== 几何常量 ====================
@@ -77,7 +77,7 @@ namespace 可成长的孔雀翎
 
         // ==================== 静态字段（★ 声明顺序 = 初始化顺序，不可随意调换）====================
         //
-        // ⚠ 血泪（2026-09-27，由 工具\VfxPreview 离线预览台当场抓到）：
+        // ⚠ 血泪（2026-09-27，由离屏量测当场抓到 —— 不是进游戏才发现的）：
         //   C# 的静态字段初始化器**按文本顺序**执行，且**不保证**先跑完全部字段再跑方法。
         //   本文件最初把 `Adj = BuildAdjacency()` 写在 `EdgePairs` 声明之前 → BuildAdjacency()
         //   迭代到的 EdgePairs 仍是 null → TypeInitializationException → 进游戏第一次打开星图必崩。

@@ -12,7 +12,7 @@ namespace 可成长的孔雀翎
 {
     /// <summary>
     /// 刀光条带的<strong>中立顶点</strong>：不含任何图形 API 类型，供游戏端（MonoGame 的 VertexPositionColorTexture）
-    /// 与离线预览端（FNA 的同名类型）各自转换。这是"游戏与预览共用同一份构建逻辑"的前提
+    /// 与其它宿主（FNA 的同名类型）各自转换。这是"构建逻辑只有一份"的前提
     /// —— 两端的顶点结构体虽然同名同布局，但不是同一个类型，直接互相传不过去。
     /// </summary>
     public struct SlashVertex
@@ -32,8 +32,8 @@ namespace 可成长的孔雀翎
     /// <summary>
     /// 近战刀光的<strong>纯几何数学</strong>：零 Terraria 依赖，只用 Microsoft.Xna.Framework。
     /// - 出处：自 Projectiles\MeleeSlashProj.cs 的 DrawFanStrip / DrawProceduralBlade 提取，提取后为<strong>唯一出处</strong>；
-    ///   游戏内绘制与 工具\VfxPreview 离线预览共用同一份文件，杜绝"两份实现各自漂移"。
-    /// - 铁律：本文件<strong>不得</strong> using Terraria.*（一旦引入，离线预览工程即无法编译）。
+    ///   本文件是顶点构建的唯一出处，杜绝"两份实现各自漂移"。
+    /// - 铁律：本文件<strong>不得</strong> using Terraria.*（一旦引入，本层即无法被非 Terraria 宿主复用）。
     /// - 坐标：传入的 oc / rootWorld 为世界坐标时，由 screenOffset（= Main.screenPosition）统一平移到屏幕空间。
     /// </summary>
     public static class SlashVfx

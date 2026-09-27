@@ -11,7 +11,7 @@
 //   用 GraphicsDevice 直绘三角形，形状由数学给出，圆是真的圆。
 //
 // 铁律：零 Terraria 依赖（只用 XNA/FNA 的 GraphicsDevice / BasicEffect / VertexPositionColor），
-//       因此游戏端与 工具\VfxPreview 离线预览共用同一份实现。
+//       因此本层可被任意宿主复用，且实现只有一份。
 // 批次纪律：调用方必须在 End() 掉 SpriteBatch 之后调用本库（与 MeleeSlashProj.DrawFanStrip 同模式），
 //       本库只负责设状态 + 提交三角形，不负责 Begin/End SpriteBatch。
 
@@ -38,7 +38,7 @@ namespace 可成长的孔雀翎
         private static Matrix _proj = Matrix.Identity;
 
         /// <summary>
-        /// 由调用方（游戏端 ModSystem / 预览台）在每帧绘制前注入设备与矩阵。
+        /// 由调用方（游戏端 ModSystem / UI）在每帧绘制前注入设备与矩阵。
         /// 之所以用静态注入而不是逐函数传参：图元调用点很多，传参会让签名爆炸；
         /// 而这些状态每帧只变一次，静态注入更贴合实际用法。
         /// </summary>
