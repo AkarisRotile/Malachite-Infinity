@@ -369,35 +369,54 @@ namespace 可成长的孔雀翎
             }
 
             // 碧翎念涌（星图 3.0 起为**星核节点**「碧翎念涌」的产物，不再是无条件原型技能）
-            // 2026-09-27 重做：从"钉在施法点的法阵"改为"展开后跟随玩家的光翼"。
-            // 已有同类光翼在场时不重复生成（否则会叠成一团），改为刷新其剩余时间。
+            // 2026-09-27 重做①：从"钉在施法点的法阵"改为"展开后跟随玩家的光翼"。
+            // 2026-09-27 重做②：**改为开关式无限持续**。
+            //   用户原话：「反正你现在也没给光翼做 CD，还不如直接做成开启之后持续时间无限算了。」
+            //   改前的设计自相矛盾：CD 为 0 → 断了立刻能再按 → 实际能无缝续到死；
+            //   于是"5.5 秒"没约束任何东西，只让玩家每 5.5 秒低头按一次键，
+            //   且一旦忘按就静默掉光 +30% 念伤 —— 那是个**只惩罚粗心的伪 CD**。
+            //
+            //   现在的语义：按一次开启 → 一直持续 → 再按一次关闭（播 18 帧崩解后消失）。
+            //   因此点击的含义取决于**当前是否已经开着**，而不是"消耗魔力放一次"。
+            //   关闭不退还魔力也不收费：这不是"两个技能"，是同一次开关的两个方向。
             if (MalachiteKeybinds.DomainKey != null && MalachiteKeybinds.DomainKey.JustPressed)
             {
                 if (Main.myPlayer == Player.whoAmI
                     && Player.HeldItem != null
                     && Player.HeldItem.type == MalachiteCache.NativeMalachiteItem
-                    && Profile.HasFlag(StarFlag.NucleusMindDomain)
-                    && Player.statMana >= 30)
+                    && Profile.HasFlag(StarFlag.NucleusMindDomain))
                 {
-                    Player.statMana -= 30;
-                    Player.manaRegenDelay = 90;
-
                     int wingType = ModContent.ProjectileType<MindWingsAura>();
-                    bool refreshed = false;
+
+                    // 先找自己在场的光翼。注意**必须排除正在收尾的那条**：
+                    // 收了尾的还活着（要播完 18 帧崩解），若把它当成"已开启"，
+                    // 玩家在收尾期间连按两下就会变成"按了没反应"（第一下关、第二下又关同一条）。
+                    MindWingsAura existing = null;
                     for (int i = 0; i < Main.maxProjectiles; i++)
                     {
                         Projectile p = Main.projectile[i];
                         if (!p.active || p.owner != Player.whoAmI || p.type != wingType) continue;
-                        p.timeLeft = MindWingsAura.TotalFrames;   // 续时而不叠加第二条
-                        refreshed = true;
-                        break;
+                        if (p.ModProjectile is MindWingsAura aura && !aura.IsDissipating) { existing = aura; break; }
                     }
-                    if (!refreshed)
+
+                    if (existing != null)
                     {
+                        // ---- 已开启 → 关闭 ----
+                        existing.StartDissipate();
+                        // 收尾音与开启音区分开（开启是上扬，关闭是下沉），否则两个方向听起来一样。
+                        SoundEngine.PlaySound(SoundID.Item27 with { Volume = 0.6f, Pitch = -0.15f }, Player.Center);
+                    }
+                    else if (Player.statMana >= 30)
+                    {
+                        // ---- 未开启 → 开启（一次性 30 魔力；维持不耗魔，见文件头平衡说明）----
+                        Player.statMana -= 30;
+                        Player.manaRegenDelay = 90;
+
                         Projectile.NewProjectile(Player.GetSource_Misc("MindWingsAura"),
                             Player.Center, Vector2.Zero, wingType, 0, 0f, Player.whoAmI);
+
+                        SoundEngine.PlaySound(SoundID.Item60 with { Volume = 0.7f, Pitch = -0.2f }, Player.Center);
                     }
-                    SoundEngine.PlaySound(SoundID.Item60 with { Volume = 0.7f, Pitch = -0.2f }, Player.Center);
                 }
             }
         }

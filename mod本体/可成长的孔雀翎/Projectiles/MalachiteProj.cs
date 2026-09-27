@@ -88,16 +88,47 @@ namespace 可成长的孔雀翎
         // 否则飞刀会变成"贴脸导弹"，连"打偏"这个基本的弹道反馈都消失。
 
         /// <summary>开始转向前的迟滞帧数（太早转会导致刚出膛就拐弯，很难看）。</summary>
-        private const int HomingDelayTicks = 5;
+        private const int HomingDelayTicks = 2;
 
-        /// <summary>索敌半径（px）。</summary>
-        private const float HomingRange = 520f;
+        /// <summary>
+        /// 索敌半径（px）。
+        /// <para/>2026-09-27 用户反馈"索敌效果不够强" → 由 520 提到 <b>1100</b>（约一个半屏幕），
+        /// 视野内的敌人基本都能锁上。
+        /// <para/>★ 再对齐旧版《巡猎》节点（`MalachiteProjectiles.cs:197` 的 <c>closestDist = 1200²</c>）→ 提到
+        /// <b>1200</b>，与旧版一致。
+        /// </summary>
+        private const float HomingRange = 1200f;
 
-        /// <summary>每次 AI 更新的最大转向角（弧度）。注意 extraUpdates=3，实际每 tick 转 4 次。</summary>
-        private const float HomingTurnRate = 0.030f;
+        /// <summary>
+        /// 已锁定目标的**保持**半径（px），必须 &gt; <see cref="HomingRange"/>。
+        /// <para/>★ 这是旧版有、我先前漏掉的关键设计（旧版：索敌 1200 / 保持 1400）。
+        /// 迟滞（hysteresis）的作用：目标在边界附近晃动时不会被反复"锁上→丢掉→再锁上"，
+        /// 否则飞刀会在两个候选目标之间来回抖，手感是"电风扇"。没有迟滞时，
+        /// 敌人只要跨出索敌圈 1px 就立刻脱锁，追踪等于白做。
+        /// </summary>
+        private const float HomingRetainRange = 1400f;
 
-        /// <summary>超过这个夹角的目标不追（避免飞刀掉头回旋）。</summary>
-        private const float HomingMaxAngle = 1.15f;   // ≈ 66°
+        /// <summary>
+        /// 重新全量扫描的间隔（AI 步数）。0 = 每步都扫。
+        /// <para/>★ 对齐旧版（`lifeTime % 3 == 0`）。本项目 <c>extraUpdates = 3</c>，
+        /// AI 每 tick 跑 4 次，即每 tick 要全扫 4 遍 <c>Main.maxNPCs</c>(200) ——
+        /// 在有浮游剑阵同时在场时是实打实的无谓开销。改为**只在自己没有锁定目标时**才扫，
+        /// 且扫的间隔不小于 <see cref="HomingRescanInterval"/>。
+        /// </summary>
+        private const int HomingRescanInterval = 2;
+
+        /// <summary>
+        /// 每次 AI 更新的最大转向角（弧度）。注意 extraUpdates=3，即**每 tick 转 4 次**。
+        /// <para/>由 0.030 提到 <b>0.052</b> → 每 tick 最大约 0.21 rad ≈ 12°，转向明显跟手。
+        /// </summary>
+        private const float HomingTurnRate = 0.052f;
+
+        /// <summary>
+        /// 超过这个夹角的目标才放弃（弧度）。
+        /// <para/>由 1.15（66°）放宽到 <b>2.2（≈126°）</b> —— 原先背面的敌人完全不追，
+        /// 实战手感就是"经常不拐弯"。
+        /// </summary>
+        private const float HomingMaxAngle = 2.2f;
 
         private void ApplyHoming()
         {
@@ -105,35 +136,67 @@ namespace 可成长的孔雀翎
             Player owner = Main.player[Projectile.owner];
             if (owner == null || !owner.active) return;
 
-            // 门控：星宿「刃回响」未点亮 → 完全保持旧弹道
+            // 门控：星宿「追翎」未点亮 → 完全保持旧弹道
             if (!StarEffects.Of(owner).HasFlag(StarFlag.BladeEcho)) return;
             if (Projectile.localAI[0] < HomingDelayTicks) return;
             if (Projectile.velocity.LengthSquared() < 0.01f) return;
 
             Vector2 dir = Vector2.Normalize(Projectile.velocity);
 
-            // 找最近的「在前方、可追击」的敌人
+            // ---- ① 先续记忆锁：只要还在「保持半径」内就继续追它（迟滞）----
+            // 这一步放在索敌之前是关键：旧版就是先查缓存 `_targetNPCIndex` 再考虑重扫，
+            // 只有这样边界处的目标才不会被反复锁上/丢掉。
             NPC best = null;
-            float bestSq = HomingRange * HomingRange;
-            for (int i = 0; i < Main.maxNPCs; i++)
+            if (Projectile.localAI[1] > 0f)
             {
-                NPC npc = Main.npc[i];
-                if (!npc.active || npc.friendly || npc.dontTakeDamage || npc.immortal || npc.lifeMax <= 5) continue;
-                if (!npc.CanBeChasedBy(Projectile)) continue;
-
-                Vector2 to = npc.Center - Projectile.Center;
-                float dSq = to.LengthSquared();
-                if (dSq > bestSq || dSq < 1f) continue;
-
-                // 只追前方目标：夹角过大时放弃（否则飞刀会掉头）
-                float ang = Math.Abs(MathHelper.WrapAngle((float)Math.Atan2(to.Y, to.X)
-                                                          - (float)Math.Atan2(dir.Y, dir.X)));
-                if (ang > HomingMaxAngle) continue;
-
-                bestSq = dSq;
-                best = npc;
+                int idx = (int)Projectile.localAI[1] - 1;
+                if (idx >= 0 && idx < Main.maxNPCs)
+                {
+                    NPC prev = Main.npc[idx];
+                    // 续锁**不要求视线**（对齐旧版）：飞行途中地形短暂遮挡就脱锁的话，
+                    // 贴地战会频繁丢目标；只有"重新选目标"才要求看得见。
+                    if (prev.active && !prev.friendly && prev.CanBeChasedBy(Projectile)
+                        && Vector2.DistanceSquared(prev.Center, Projectile.Center)
+                           <= HomingRetainRange * HomingRetainRange)
+                        best = prev;
+                }
             }
-            if (best == null) return;
+
+            // ---- ② 没有锁定目标时才重新索敌（并节流）----
+            if (best == null)
+            {
+                Projectile.localAI[1] = 0f;
+
+                // 节流：不必每个 AI 步都全扫一遍 Main.maxNPCs
+                if ((int)Projectile.localAI[0] % HomingRescanInterval != 0) return;
+
+                float bestSq = HomingRange * HomingRange;
+                for (int i = 0; i < Main.maxNPCs; i++)
+                {
+                    NPC npc = Main.npc[i];
+                    if (!npc.active || npc.friendly || npc.dontTakeDamage || npc.immortal || npc.lifeMax <= 5) continue;
+                    if (!npc.CanBeChasedBy(Projectile)) continue;
+
+                    Vector2 to = npc.Center - Projectile.Center;
+                    float dSq = to.LengthSquared();
+                    if (dSq > bestSq || dSq < 1f) continue;
+
+                    // ★ 视线判定（旧版同款 `Collision.CanHit`）：只锁看得见的敌人。
+                    // 否则飞刀会锁定墙后的目标并一路拐进地形里 —— 玩家读到的不是"追踪强"，
+                    // 而是"这刀老往墙上撞"。
+                    if (!Collision.CanHit(Projectile.Center, 1, 1, npc.Center, 1, 1)) continue;
+
+                    // 夹角限制：放宽到 126°，但仍排除正后方刚出膛就掉头
+                    float ang = Math.Abs(MathHelper.WrapAngle((float)Math.Atan2(to.Y, to.X)
+                                                              - (float)Math.Atan2(dir.Y, dir.X)));
+                    if (ang > HomingMaxAngle) continue;
+
+                    bestSq = dSq;
+                    best = npc;
+                }
+                if (best == null) return;
+            }
+            Projectile.localAI[1] = best.whoAmI + 1;   // 记住锁定目标（+1 让 0 表示"无"）
 
             Vector2 desired = Vector2.Normalize(best.Center - Projectile.Center);
             float curAng = (float)Math.Atan2(dir.Y, dir.X);

@@ -100,7 +100,7 @@ namespace 可成长的孔雀翎
         NucleusMyriadBlades = 1 << 12,
         /// <summary>盈满之念：暴击溢出增幅 ×2，且溢出转为念爆范围伤害。</summary>
         NucleusOverflow = 1 << 13,
-        /// <summary>碧翎念涌：按念涌键展开一对跟随玩家的念羽光翼，期间念伤 +30%、并发 +2、翼下敌人减速。</summary>
+        /// <summary>碧翎念涌：按念涌键**开/关**一对跟随玩家的念羽光翼（开启后无限持续），开启期间念伤 +30%、并发 +2、翼下敌人减速。</summary>
         NucleusMindDomain = 1 << 14,
     }
 

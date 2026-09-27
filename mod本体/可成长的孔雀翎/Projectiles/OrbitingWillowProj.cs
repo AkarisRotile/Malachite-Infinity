@@ -17,7 +17,7 @@ namespace 可成长的孔雀翎
     /// 流风剑阵（剑阵节点产物）：每次普攻在玩家四周随机方位生成一道。
     /// <para/>生命周期 = 随机方位现身 → 穿墙朝玩家飞来 → 悬停自转蓄力 → 朝鼠标射出飞刀 → 消散消亡。
     /// <para/>ai[0] = 蓄力计帧；ai[1] = 出场延迟帧（保留以兼容错峰生成的调用惯例）；
-    /// localAI[0] = 存活帧数；localAI[1] = 消亡倒计时（>0 时进入渐隐消亡，不再攻击/移动）。
+    /// localAI[0] = 存活帧数。**没有渐隐阶段**：蓄力完成射完飞刀后直接 Kill（2026-09-27 用户要求）。
     /// <para/>穿墙实现：tileCollide = false（全程），故剑阵可穿过物块追身，射出的飞刀同样设为不碰撞。
     /// </summary>
     public class OrbitingWillowProj : ModProjectile
@@ -41,10 +41,7 @@ namespace 可成长的孔雀翎
         private const int ChargeFramesHigh = 15;
 
         /// <summary>消亡渐隐帧数（消亡代码的消散期）。</summary>
-        private const int WitherFrames = 36;
 
-        /// <summary>是否已进入消亡渐隐期（供生成方统计在场名额时排除）。</summary>
-        public bool IsWithering => Projectile.localAI[1] > 0f;
 
         public override void SetDefaults()
         {
@@ -89,12 +86,6 @@ namespace 可成长的孔雀翎
 
             Projectile.localAI[0]++;
 
-            // ===== 消亡期：只做渐隐与粒子，不再移动、不再攻击 =====
-            if (Projectile.localAI[1] > 0f)
-            {
-                UpdateWither();
-                return;
-            }
 
             // 错峰等待期：贴住生成点不动（可见性仍为 alpha=255 隐藏）
             if (Projectile.ai[1] > 0f)
@@ -125,12 +116,11 @@ namespace 可成长的孔雀翎
 
             Lighting.AddLight(Projectile.Center, 0.1f, 0.45f, 0.2f);
 
-            // ===== 消亡判定：超时即渐隐 =====
+            // ===== 生命耗尽：直接消失（不做渐隐，见下方说明）=====
             // 不再按"离玩家多远"判死 —— 剑阵既然就地停留，玩家跑开不该把它抹掉。
-            if (Projectile.localAI[0] > Projectile.timeLeft - WitherFrames)
+            if (Projectile.timeLeft <= 1)
             {
-                BeginWither();
-                UpdateWither();
+                Projectile.Kill();
                 return;
             }
 
@@ -159,8 +149,10 @@ namespace 可成长的孔雀翎
             {
                 // 蓄满：朝鼠标方向射出飞刀（高攻速下会对同一目标多段命中，走本地无敌帧节流）
                 FireVolley(mult: 1f);
-                // 射完即进入消亡（原「回锋折返」分支已随该节点改用途一并移除）
-                BeginWither();
+                // ★ 2026-09-27 用户："剑阵不要做渐隐效果，因为剑是直接发射出去的，都发射了哪还有渐隐"。
+                //   说得对 —— 蓄力完把飞刀射出去之后，场上就什么都不剩了，还留 36 帧渐隐是自相矛盾。
+                //   （参考版 `OrbitingMalachiteProj` 同样是射完即 Kill，无任何渐隐。）
+                Projectile.Kill();
             }
         }
 
@@ -231,51 +223,6 @@ namespace 可成长的孔雀翎
             Projectile.localAI[2] = 0f;
             Projectile.velocity *= 0.25f;
             return false;
-        }
-
-        /// <summary>
-        /// 消亡代码 · 起始：锁定渐隐倒计时并停止参与战斗。
-        /// 幂等——重复调用不会重置倒计时。
-        /// </summary>
-        private void BeginWither()
-        {
-            if (Projectile.localAI[1] > 0f) return;
-            Projectile.localAI[1] = WitherFrames;
-            Projectile.friendly = false;   // 消亡期不再判定，避免"消散中的剑阵还在打人"
-            Projectile.velocity = Vector2.Zero;
-        }
-
-        /// <summary>
-        /// 消亡代码 · 每帧推进：渐隐（alpha 爬升）+ 由外向内收拢的消散粒子，倒计时归零时 Kill。
-        /// </summary>
-        private void UpdateWither()
-        {
-            Projectile.localAI[1]--;
-            Projectile.velocity = Vector2.Zero;
-
-            float t = 1f - Projectile.localAI[1] / (float)WitherFrames; // 0 → 1
-            // alpha 100 → 255（与出场 255 → 100 的渐显对称）
-            Projectile.alpha = Math.Min(255, (int)MathHelper.Lerp(100f, 255f, t));
-            Projectile.rotation += SpinPerFrame * 0.35f;    // 消亡期旋转减速
-            Lighting.AddLight(Projectile.Center, 0.1f * (1f - t), 0.45f * (1f - t), 0.2f * (1f - t));
-
-            // 由外向内收拢的晶尘（越是末期越靠中心）
-            if (EffectLimiterSystem.CanSpawnEffect(1, 70))
-            {
-                Vector2 from = Projectile.Center + Main.rand.NextVector2CircularEdge(1f, 1f) * (34f * (1f - t) + 6f);
-                Vector2 vel = (Projectile.Center - from) * 0.12f;
-                int di = Dust.NewDustPerfect(from, DustID.GemEmerald, vel, 0,
-                    Main.rand.NextBool(3) ? MalachitePalette.GreenBright : MalachitePalette.PrimaryGreen,
-                    Main.rand.NextFloat(0.6f, 1.1f)).dustIndex;
-                Main.dust[di].noGravity = true;
-                Main.dust[di].fadeIn = 0.4f;
-            }
-
-            if (Projectile.localAI[1] <= 0f)
-            {
-                SoundEngine.PlaySound(SoundID.Item27 with { Volume = 0.35f, Pitch = 0.3f }, Projectile.Center);
-                Projectile.Kill();
-            }
         }
     }
 }

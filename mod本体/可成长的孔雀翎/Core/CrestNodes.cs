@@ -208,7 +208,8 @@ namespace 可成长的孔雀翎
             return spawned;
         }
 
-        /// <summary>场上传在的剑阵数（已进入消亡期的不占名额——它们只剩渐隐，不该阻塞后续生成）。</summary>
+        /// <summary>场上存活的剑阵数（用于 <see cref="ArrayMaxAlive"/> 软上限）。
+        /// <para/>注：剑阵已无渐隐阶段（射完即 Kill），因此这里的计数就是"真正还在场上待机/蓄力"的数量。</summary>
         private static int CountAliveArrays(Player player)
         {
             int projType = ModContent.ProjectileType<OrbitingWillowProj>();
@@ -217,7 +218,6 @@ namespace 可成长的孔雀翎
             {
                 Projectile p = Main.projectile[i];
                 if (!p.active || p.owner != player.whoAmI || p.type != projType) continue;
-                if (p.ModProjectile is OrbitingWillowProj w && w.IsWithering) continue;
                 alive++;
             }
             return alive;
@@ -250,13 +250,18 @@ namespace 可成长的孔雀翎
         //   · 念伤加成不再需要"站在圈里"的判定 —— 光翼就是你的一部分，展开期间常驻生效；
         //   · 半径 320 → 160（AGY：太大反而遮挡视野），只用来判定**敌人**是否被念蚀减速。
 
-        /// <summary>【碧翎念涌】展开期间的念伤害增幅（相对最终伤害）。</summary>
+        /// <summary>【碧翎念涌】开启期间的念伤害增幅（相对最终伤害）。</summary>
         public const float MindDomainDamageBonus = 0.30f;
 
-        /// <summary>【碧翎念涌】展开期间的并发弹幕加成。</summary>
+        /// <summary>【碧翎念涌】开启期间的并发弹幕加成。</summary>
         public const int MindDomainVolleyBonus = 2;
 
-        /// <summary>玩家身上的碧翎念涌是否正在展开（供伤害加成与并发加成判定）。</summary>
+        /// <summary>
+        /// 玩家身上的碧翎念涌是否已开启（供伤害加成与并发加成判定）。
+        /// <para/>⚠ 判定"存在即生效"，**不区分是否正在收尾**：关闭时那 18 帧崩解里光翼仍在画面上，
+        /// 加成跟着一起淡出反而更连贯。且这样还有一个副作用是好的 —— 收尾期间再按一次 V 会开出一对
+        /// 新的光翼（旧的那条已在收尾、不算"已开启"），两者会交叉淡入淡出，不会变成"按了没反应"。
+        /// </summary>
         public static bool IsMindDomainActive(Player player)
         {
             if (player == null || !player.active) return false;

@@ -1,72 +1,111 @@
+// ============================================================================
+// 可成长的孔雀翎 / Malachite Infinity —— 本地化（English / en-US）
+// ============================================================================
+//
+// 【键的作用域】文件名里的 `_Mods.可成长的孔雀翎` 后缀表示：本文件内所有键都自动挂在
+//   `Mods.可成长的孔雀翎.` 之下。所以下面写的 `Items.PeacockWillowBlade.DisplayName`
+//   实际解析为 `Mods.可成长的孔雀翎.Items.PeacockWillowBlade.DisplayName`。
+//
+// 【为什么必须有这个文件】tML 的键查找失败时**不报错**，而是把键原文当显示文本回退。
+//   后果不是"少一句话"，而是在界面上直接印出 `Mods.可成长的孔雀翎.Keybinds.XXX.DisplayName`
+//   这种长字符串 —— 它比控件列表的标签栏宽 → 换行到第二行，而行高是固定的（30px）→
+//   压在下一行上，视觉上就是"糊成一坨"。2026-09-27 用户正是撞上这个。
+//   因此：**每新增一个 ModKeybind / ModConfig 成员 / 物品 / 弹幕，都必须同时在
+//   en-US 与 zh-Hans 两个文件里补键**，否则不会崩、只会烂。
+//
+// 【铁律：一个键只写一种语言】不要写 `念 / Mind` 这种"中英混排"的值 ——
+//   那等于对两种语言的玩家都显示一半废话。语言由 tML 按当前游戏语言自动选文件，
+//   这里只负责把**当前这一种语言**写对。中文全部在 zh-Hans_Mods.可成长的孔雀翎.hjson。
+//
+// 【键格式速查】（均取自 tML 源码，非猜测）
+//   物品/弹幕/伤害类型/配置:  <TypeName>.DisplayName            （嵌套或点分写法等价）
+//   配置成员标签:             Configs.<配置类名>.<成员名>.Label / .Tooltip
+//   配置枚举选项:             Configs.<枚举类名>.<选项名>.Label / .Tooltip
+//   配置分节标题:             Configs.<配置类名>.Headers.<HeaderAttribute 的标识符>
+//   快捷键:                   Keybinds.<RegisterKeybind 的名字>.DisplayName
+//     ⚠ 快捷键**只有 DisplayName，没有 Tooltip**（见 tML 的 ModKeybind.cs / UIKeybindingListItem）——
+//       写了 Tooltip 也是死键，永远不显示。所以想说明的行为（例如"开/关"）只能塞进 DisplayName，
+//       而且必须短：控件列表的标签栏很窄，一长就换行、换行就压行。
+//
+// 【改动纪律】键一旦发布就**只能增、不能改名**：ModConfig 的成员名与 Keybind 的名字
+//   是玩家存档（ModConfigs/*.json 与输入绑定）的持久化依据，改名 = 重置玩家设置。
+
+// 模组自身在"模组列表 / 模组配置标题"里显示的名字。
+// 根级的 `DisplayName` 因为文件作用域的关系，等于 `Mods.可成长的孔雀翎.DisplayName`。
+// ⚠ 这只是**显示名**；模组的内部名（存档、ModSources 目录、Mods.<名> 键路径）永远是
+//   `可成长的孔雀翎`，不随这里变化。build.txt 的 displayName 也留了一份英文兜底 —— 两处都要改才不会有混排。
+DisplayName: Malachite Infinity
+
 DamageClasses: {
 	MindDamageClass: {
-		DisplayName: 念 / Mind
+		DisplayName: Mind
 	}
 }
 
 Items: {
 	PeacockWillowBlade: {
-		DisplayName: 孔雀柳刃 / Willow Blade
-		Tooltip: 会随着游戏进程成长的孔雀柳刃
+		DisplayName: Willow Blade
+		Tooltip: A willow blade that grows alongside your journey.
 	}
 }
 
 Projectiles: {
-	OrbitingMalachiteProj.DisplayName: Orbiting Malachite Proj
+	OrbitingMalachiteProj.DisplayName: Orbiting Malachite
 	MalachitePlagueCloud.DisplayName: Malachite Plague Cloud
 	MalachiteExplosion.DisplayName: Malachite Explosion
-	MalachiteExplosiveFeather.DisplayName: Malachite Explosive Feather
-	BasicMalachiteProj.DisplayName: Basic Malachite Proj
-	MalachiteDashProj.DisplayName: Malachite Dash Proj
-	MalachiteWingProj.DisplayName: Malachite Wing Proj
+	MalachiteExplosiveFeather.DisplayName: Explosive Feather
+	BasicMalachiteProj.DisplayName: Malachite Knife
+	MalachiteDashProj.DisplayName: Malachite Dash
+	MalachiteWingProj.DisplayName: Malachite Wing
 	MalachiteCatastrophe.DisplayName: Malachite Catastrophe
 	MalachiteCataclysm.DisplayName: Malachite Cataclysm
-	MalachiteCataFist.DisplayName: Malachite Cata Fist
-	MalachiteCataSlash.DisplayName: Malachite Cata Slash
-	EsCrestSigilProj.DisplayName: 空间纹章 / Es Crest Sigil
-	OrbitingCrestProj.DisplayName: 灼翎纹章 / Radiant Crest
-	OrbitingWillowProj.DisplayName: 流风剑阵 / Wandering Blades
-	MalachiteBolt.DisplayName: 孔雀射线 / Malachite Bolt
+	MalachiteCataFist.DisplayName: Cataclysm Fist
+	MalachiteCataSlash.DisplayName: Cataclysm Slash
+	EsCrestSigilProj.DisplayName: Es Crest Sigil
+	OrbitingCrestProj.DisplayName: Radiant Crest
+	OrbitingWillowProj.DisplayName: Wandering Blades
+	MalachiteBolt.DisplayName: Malachite Bolt
 }
 
 Configs: {
 	MalachiteConfig: {
 		DisplayName: Malachite Config
 
+		// 与 MalachiteConfig.cs 上 [Header("...")] 的标识符逐字对应
 		Headers: {
-			性能与画质: 性能与画质 Header
-			Performance_性能与画质: Performance_性能与画质 Header
-			Localization_语言设置: Localization_语言设置 Header
-			UI_界面设置: U I_界面设置 Header
-		}
-
-		ParticleLevel: {
-			Label: 粒子特效密度
-			Tooltip:
-				'''
-				控制攻击、暴击、剑阵自转等产生的粒子数量。
-				极简：大幅砍掉次要特效，解决卡顿。
-				均衡：动态限制特效，兼顾画质与帧数。
-				全开：不做任何限制（仅推荐高配电脑）。
-				'''
+			Language: Language
+			Performance: Performance & Visuals
+			UI: Interface
 		}
 
 		Language: {
+			Label: Mod Language
 			Tooltip:
 				'''
-				Switch the language of Malachite's custom texts.
-				切换孔雀翎自定义剧情与星图的语言。
+				Which language Malachite uses for its own story text and star map.
+				This is separate from the game language: item names, config labels and
+				keybind names always follow the game language.
 				'''
-			Label: Mod Language / 模组语言
+		}
+
+		ParticleLevel: {
+			Label: Particle Density
+			Tooltip:
+				'''
+				Controls how many particles attacks, crits and spinning blades produce.
+				Minimal: aggressively cuts secondary effects; use this if you drop frames.
+				Balanced: caps effects dynamically, keeping both looks and framerate.
+				High: no cap at all (high-end machines only).
+				'''
 		}
 
 		AutoPlayDialog: {
+			Label: Auto Play Dialog
 			Tooltip:
 				'''
-				When enabled, dialogues will play automatically. When disabled, you need to click the dialog box to proceed.
-				开启时对话将自动播放，关闭时需要点击对话框才能进入下一句。
+				When on, dialogue advances by itself.
+				When off, you click the dialog box to move to the next line.
 				'''
-			Label: Auto Play Dialog / 自动播放对话
 		}
 	}
 
@@ -74,34 +113,48 @@ Configs: {
 		Tooltip: ""
 
 		Low: {
-			Label: 极简 (流畅优先)
+			Label: Minimal (performance first)
 			Tooltip: ""
 		}
 
 		Medium: {
-			Label: 均衡 (推荐设置)
+			Label: Balanced (recommended)
 			Tooltip: ""
 		}
 
 		High: {
-			Label: 全开 (画质优先)
+			Label: All out (visuals first)
 			Tooltip: ""
 		}
 	}
 
+	// 语言名用各自的母语书写（简体中文 / English），这是惯例：玩家看不懂当前语言时也能认出来。
 	MalachiteLanguage: {
 		English: {
-			Tooltip: ""
 			Label: English
+			Tooltip: ""
 		}
 
 		Chinese: {
-			Tooltip: ""
 			Label: 简体中文
+			Tooltip: ""
 		}
 
 		Tooltip: ""
 	}
 }
 
-"Keybinds.与孔雀翎对话 (Talk to Malachite).DisplayName": 与孔雀翎对话 (Talk to Malachite)
+// 名字必须与 MalachiteKeybinds.cs 里 RegisterKeybind 的第一个参数逐字一致。
+Keybinds: {
+	TalkToMalachite: {
+		DisplayName: Talk to Malachite
+	}
+
+	VerdantPlumage: {
+		DisplayName: Verdant Plumage (Toggle)
+	}
+
+	MeleeAttack: {
+		DisplayName: Melee Attack
+	}
+}

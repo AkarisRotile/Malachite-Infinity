@@ -1,0 +1,144 @@
+// ============================================================================
+// 可成长的孔雀翎 —— 本地化（简体中文 / zh-Hans）
+// ============================================================================
+//
+// ⚠ 本文件与 en-US_Mods.可成长的孔雀翎.hjson **必须保持键的集合完全一致**，只是值不同。
+//   漏掉某个键时 tML 不会报错：它会回退到默认语言（en-US），于是中文界面里
+//   突然冒出一句英文，或者（更糟）冒出一整条 `Mods.可成长的孔雀翎.XXX.YYY` 的键原文 —— 
+//   键原文比控件列表的标签栏宽 → 换行 → 压在下一行上，看起来就是"糊成一坨"。
+//   加内容时请两个文件一起加。
+//
+// ⚠ 铁律：一个键只写一种语言，不要 `念 / Mind` 这样混排。
+//
+// ⚠ 快捷键只有 DisplayName，**没有 Tooltip**（tML 的 ModKeybind 只注册这一个键）。
+//   所以"开/关"这类说明必须塞进 DisplayName，且要短 —— 标签栏很窄，一长就换行压行。
+//
+// 键格式说明见 en-US 文件的头部注释。
+
+// 模组自身在"模组列表 / 模组配置标题"里显示的名字。
+// 根级的 `DisplayName` 因为文件作用域的关系，等于 `Mods.可成长的孔雀翎.DisplayName`。
+// ⚠ 这只是**显示名**；模组的内部名（存档、ModSources 目录、Mods.<名> 键路径）永远是
+//   `可成长的孔雀翎`，不随这里变化。
+DisplayName: 可成长的孔雀翎
+
+DamageClasses: {
+	MindDamageClass: {
+		DisplayName: 念
+	}
+}
+
+Items: {
+	PeacockWillowBlade: {
+		DisplayName: 孔雀柳刃
+		Tooltip: 会随着游戏进程成长的孔雀柳刃
+	}
+}
+
+Projectiles: {
+	OrbitingMalachiteProj.DisplayName: 环身孔雀翎
+	MalachitePlagueCloud.DisplayName: 孔雀瘟疫云
+	MalachiteExplosion.DisplayName: 孔雀爆裂
+	MalachiteExplosiveFeather.DisplayName: 爆裂翎羽
+	BasicMalachiteProj.DisplayName: 孔雀飞刀
+	MalachiteDashProj.DisplayName: 孔雀突进
+	MalachiteWingProj.DisplayName: 孔雀翼击
+	MalachiteCatastrophe.DisplayName: 灾祸孔雀
+	MalachiteCataclysm.DisplayName: 大灾变孔雀
+	MalachiteCataFist.DisplayName: 灾变之拳
+	MalachiteCataSlash.DisplayName: 灾变斩击
+	EsCrestSigilProj.DisplayName: 空间纹章
+	OrbitingCrestProj.DisplayName: 灼翎纹章
+	OrbitingWillowProj.DisplayName: 流风剑阵
+	MalachiteBolt.DisplayName: 孔雀射线
+}
+
+Configs: {
+	MalachiteConfig: {
+		DisplayName: 孔雀翎设置
+
+		// 与 MalachiteConfig.cs 上 [Header("...")] 的标识符逐字对应
+		Headers: {
+			Language: 语言设置
+			Performance: 性能与画质
+			UI: 界面设置
+		}
+
+		Language: {
+			Label: 模组语言
+			Tooltip:
+				'''
+				切换孔雀翎自定义剧情文本与星图的语言。
+				这一项与游戏语言是分开的：物品名、配置标签、快捷键名始终跟随游戏语言。
+				'''
+		}
+
+		ParticleLevel: {
+			Label: 粒子特效密度
+			Tooltip:
+				'''
+				控制攻击、暴击、剑阵自转等产生的粒子数量。
+				极简：大幅砍掉次要特效，解决卡顿。
+				均衡：动态限制特效，兼顾画质与帧数。
+				全开：不做任何限制（仅推荐高配电脑）。
+				'''
+		}
+
+		AutoPlayDialog: {
+			Label: 自动播放对话
+			Tooltip:
+				'''
+				开启时对话将自动播放。
+				关闭时需要点击对话框才能进入下一句。
+				'''
+		}
+	}
+
+	ParticleEffectLevel: {
+		Tooltip: ""
+
+		Low: {
+			Label: 极简（流畅优先）
+			Tooltip: ""
+		}
+
+		Medium: {
+			Label: 均衡（推荐设置）
+			Tooltip: ""
+		}
+
+		High: {
+			Label: 全开（画质优先）
+			Tooltip: ""
+		}
+	}
+
+	// 语言名用各自的母语书写，这是惯例：玩家看不懂当前语言时也能认出自己的语言。
+	MalachiteLanguage: {
+		English: {
+			Label: English
+			Tooltip: ""
+		}
+
+		Chinese: {
+			Label: 简体中文
+			Tooltip: ""
+		}
+
+		Tooltip: ""
+	}
+}
+
+// 名字必须与 MalachiteKeybinds.cs 里 RegisterKeybind 的第一个参数逐字一致。
+Keybinds: {
+	TalkToMalachite: {
+		DisplayName: 与孔雀翎对话
+	}
+
+	VerdantPlumage: {
+		DisplayName: 碧翎念涌 (开/关)
+	}
+
+	MeleeAttack: {
+		DisplayName: 近战攻击
+	}
+}

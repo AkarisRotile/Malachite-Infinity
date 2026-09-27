@@ -45,9 +45,7 @@ on top of Calamity as extra growth content.
 代码：始弦
 Bug 修复：哈基米3.1P
 数值：始弦
-角色立绘：
- - BiliBili：@苗库里
- - Pixiv：@takeez3
+角色立绘：@苗库里（BiliBili 152309938） / @takeez3（X）
 文本：始弦
 
 感谢所有喜欢这个 mod 的大家！欢迎把天赋/数值/手感的任何建议直接告诉我。

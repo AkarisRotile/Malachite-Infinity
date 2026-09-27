@@ -264,8 +264,8 @@ namespace 可成长的孔雀翎
                 StarFlag.RadiantCrest, StarGate.Skeletron));
             L.Add(Dust("Mnd_D3", a, d, R_D3, "灵犀·叁", "Rapport III", "护甲穿透 +4", "+4 armor penetration", StarStat.ArmorPen, 4f));
             L.Add(Nucleus("Mnd_N", a, "碧翎念涌", "Verdant Plumage",
-                "按念涌键展开一对跟随你的念羽光翼，持续 5.5 秒：期间念伤害 +30%、并发弹幕 +2；翼下软场内的敌人持续被念蚀减速。",
-                "Press the key to unfold a pair of mind-feather wings that follow you for 5.5s: +30% Mind damage, +2 concurrent projectiles, and nearby enemies are slowed by the mind field.",
+                "按念涌键展开一对跟随你的念羽光翼，再按一次收起（开启后无限持续）：期间念伤害 +30%、并发弹幕 +2；翼下软场内的敌人持续被念蚀减速。",
+                "Press the key to unfold a pair of mind-feather wings that follow you; press again to dismiss. Once opened they last indefinitely: +30% Mind damage, +2 concurrent projectiles, and nearby enemies are slowed by the mind field.",
                 StarFlag.NucleusMindDomain, StarGate.MoonLord));
 
             // ================= 内环 R1（星尘 ×5）—— 跨臂混搭通路 =================

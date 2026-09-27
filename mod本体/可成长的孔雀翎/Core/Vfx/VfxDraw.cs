@@ -735,20 +735,29 @@ namespace 可成长的孔雀翎
         //     ① 去掉"背部半月圣环"（那段用 bloomTex 本意是圆形柔光，但 Extra_89 与 Extra_98
         //        实测字节相同、都是竖直梭形 → 实际渲染成一枚 ~237px 的**巨大竖直菱形**，
         //        即用户指认的"那个粗糙的大棱形"）；
-        //     ② 把一次性的 24/48 帧生命周期拉长成常驻 330 帧；
+        //     ② 生命周期从一次性的 24/48 帧改为**无限常驻**（2026-09-27 起；先前是定时 330 帧）；
         //     ③ 镜像到两侧，成为一对随玩家移动的光翼。
         //
         // 时间轴：张开沿用终结技的超射弹簧（SnapSpringCurve）；第 3 帧内渐显；
-        //         最后 WingDissipateFrames 帧渐隐。常驻期不做额外"呼吸缩放"——
-        //         羽片自身的 wave 颤动（写入 DrawWingPlumeFan）就是终结技的呼吸感，保持一致。
+        //         关闭时用 WingDissipateFrames 帧渐隐（常驻期**没有任何衰减**）。
+        //         常驻期不做额外"呼吸缩放"——羽片自身的 wave 颤动（写入 DrawWingPlumeFan）
+        //         就是终结技的呼吸感，保持一致。
+        //
+        // ★ 无限持续为什么是安全的（改之前专门验过，不是想当然）：
+        //   · SnapSpringCurve 把 snapP 钳在 1，故 timer 很大时恒返回恰好 1.0 —— 不会溢出、不会回弹；
+        //   · 羽片颤动是 sin(timer * 0.15f) 的纯正弦，每帧固定前进 0.15 rad，天然循环、无累积漂移。
+        //   （唯一的理论边界：float 在该量级下 ulp 追上 0.15 需连续常驻约 39 小时，
+        //     届时颤动会变卡顿 —— 不在现实射程内，故不做 timer 取模。）
 
         /// <summary>光翼张开的弹簧收敛帧数（终结技约 4~6 帧，常驻版略慢以便看清展开）。</summary>
         public const float WingSnapFrames = 10f;
 
-        /// <summary>碧翎念涌总持续帧数（5.5 秒 @60fps）。唯一出处（离线预览台也取这里）。</summary>
-        public const int WingTotalFrames = 330;
-
-        /// <summary>收尾渐隐帧数。</summary>
+        /// <summary>
+        /// 收尾渐隐帧数。
+        /// <para/>★ 这是光翼**唯一**的时间常量：碧翎念涌已改为无限持续（开关式），
+        /// 消散不再由"总帧数"推导，而是关闭时写入的倒计时。旧的 <c>WingTotalFrames = 330</c> 已删除——
+        /// 留着它只会诱导后来者又去写定时，把"没有 CD 的持续时间"这个伪 CD 重新加回来。
+        /// </summary>
         public const int WingDissipateFrames = 18;
 
         /// <summary>羽片数量（= 终结技"巨单翼"档）。</summary>
@@ -799,29 +808,29 @@ namespace 可成长的孔雀翎
         /// </summary>
         /// <param name="rootScreenPos">翼根（玩家背部偏上）的屏幕坐标。</param>
         /// <param name="direction">玩家朝向（1 右 / -1 左）。</param>
-        /// <param name="timer">自展开起的帧数。</param>
+        /// <param name="timer">自展开起的帧数（**无上限**，可无限增长）。</param>
+        /// <param name="dissipateRemaining">
+        /// 关闭时的消散倒计时（帧）：&gt;0 = 正在收尾并据此渐隐，0 = 常驻中（完全不衰减）。
+        /// <para/>终结技直接传 0（它有自己的总时长，不走这条路径）。
+        /// </param>
         /// <param name="sizeMult">整体尺寸倍率（终结技用 3；常驻版建议 1.0~1.6，避免糊住视野）。</param>
         /// <param name="bothSides">
         /// true = 左右各一（一对光翼，默认）；false = 与终结技完全一致的单侧单翼。
         /// </param>
         public static void DrawMindWings(
             SpriteBatch sb, Texture2D flareTex, Texture2D pixel,
-            Vector2 rootScreenPos, int direction, float timer, float sizeMult, bool bothSides,
+            Vector2 rootScreenPos, int direction, float timer, float dissipateRemaining, float sizeMult, bool bothSides,
             Color emeraldBase, Color goldBase)
         {
             if (sb == null || flareTex == null) return;
 
             int dir = direction >= 0 ? 1 : -1;
 
-            // 渐显 / 渐隐（终结技是 3 帧进、8 帧出；常驻版收尾拉长到 WingDissipateFrames）
+            // 渐显 / 渐隐（渐显 3 帧；只在"关闭"时进入收尾渐隐，常驻期没有任何衰减）
             float alpha = 1f;
             if (timer < 3f) alpha = timer / 3f;
-            else
-            {
-                float fadeStart = WingTotalFrames - WingDissipateFrames;
-                if (timer > fadeStart)
-                    alpha = MathHelper.Clamp((WingTotalFrames - timer) / WingDissipateFrames, 0f, 1f);
-            }
+            else if (dissipateRemaining > 0f)
+                alpha = MathHelper.Clamp(dissipateRemaining / WingDissipateFrames, 0f, 1f);
             if (alpha <= 0.01f) return;
 
             Color cEmerald = emeraldBase * (alpha * 0.85f);
