@@ -3,24 +3,24 @@
 ================================================================================
   Mod-Gate.ps1 —— 可成长的孔雀翎 · 可执行开发门禁
 ================================================================================
-  配套文档：写法\开发工作流.md（§5 阶段 E：门禁）
   用途：把"编译自检 + 结构审计"脚本化。本脚本只读源码并调用 dotnet build，
   不写工作区之外；打包 .tmod 到用户 Mods 目录被拒（TML001 / MSB3073）属预期
   （由作者同步 ModSources 后在游戏内构建），脚本会识别并计为"预期打包越界"，
   不当作编译失败。
 
   用法（在工作区根目录 E:\孔雀翎 下执行）：
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\写法\_tools\Mod-Gate.ps1 -Mode Gate
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\工具\Mod-Gate.ps1 -Mode Gate
     （脚本为 UTF-8 BOM，Windows PowerShell 5.1 与 PowerShell 7 均可直接运行；
-      本文档其余处统一缩写为 pwsh -NoProfile -File .\写法\_tools\Mod-Gate.ps1）
+      本文档其余处统一缩写为 pwsh -NoProfile -File .\工具\Mod-Gate.ps1）
     -Mode Gate     编译 + 审计（默认）
     -Mode Compile  仅编译门禁
     -Mode Audit    仅结构审计
 
   退出码：0 = 通过；1 = 硬性失败（C# 编译错误或红线违规），禁止继续。
 
-  审计红线（对应开发工作流 §0 铁律）：
+  审计红线：
     FAIL-1  error CS* 编译错误（其余 MSB/TML 错误需人工判读）
+            预期不算失败：TML001（写用户 Mods 目录被拒）、TML003（游戏正开着，tML 拒绝直接打包）
     FAIL-2  弹幕（Projectiles\）出现 TextureAssets.MagicPixel —— 用自建 1x1 贴图/AdditiveLayer.Pixel；
             UI/HUD 条状绘制属允许范式，仅 WARN 提示人工确认坐标系
     FAIL-3  出现 using CalamityMod（编译期灾厄依赖回潮；软引用只允许 Core\CalamityCompat.cs 等）
@@ -37,7 +37,7 @@ $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 # ---------- 路径 ----------
-$root    = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)      # E:\孔雀翎
+$root    = Split-Path -Parent $PSScriptRoot      # E:\孔雀翎
 $projDir = Join-Path $root 'mod本体\可成长的孔雀翎'
 $proj    = Join-Path $projDir '可成长的孔雀翎.csproj'
 $dll     = Join-Path $projDir 'bin\Debug\net8.0\可成长的孔雀翎.dll'
@@ -78,9 +78,9 @@ function Invoke-CompileGate {
         $line    = $m.Value.Trim()
         if ($codeTag -like 'CS*') {
             $csLines += $line
-        } elseif ($codeTag -eq 'TML001') {
+        } elseif ($codeTag -eq 'TML001' -or $codeTag -eq 'TML003') {
             $packLines += $line
-        } elseif ($codeTag -eq 'MSB3073' -and ($text -match 'TML001|Access to the path|tModLoader\.dll -server')) {
+        } elseif ($codeTag -eq 'MSB3073' -and ($text -match 'TML00[13]|Access to the path|tModLoader\.dll -server')) {
             $packLines += $line
         } else {
             $otherErr += $line
@@ -95,7 +95,7 @@ function Invoke-CompileGate {
     }
 
     if ($packLines.Count -gt 0) {
-        Write-Warn "TML001/MSB3073 打包越界 $($packLines.Count) 条：写入用户 Mods 目录被拒——属预期，由作者游戏内构建（不计失败）"
+        Write-Warn "TML001/TML003/MSB3073 打包越界 $($packLines.Count) 条：写用户 Mods 目录被拒或游戏正开着——属预期，由作者游戏内构建（不计失败）"
     }
 
     if ($otherErr.Count -eq 0) {

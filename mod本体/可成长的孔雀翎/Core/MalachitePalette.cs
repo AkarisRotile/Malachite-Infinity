@@ -52,16 +52,16 @@ namespace 可成长的孔雀翎
         public static readonly Color PureBlack = Color.Black;
 
         // ============================================================================
-        // 星图 3.0「翎羽星网」专用色（来源：AGY 设计咨询稿 写法\_agy\reply_01~03）
+        // 星图 3.0「翎羽星网」专用色
         // ============================================================================
-        // 优先级声明（2026-09-27 用户拍板）：**与 AGY 设计稿冲突时以 AGY 为准**。
-        // 原 R5「颜色只许来自本文件」的精神不变（仍然集中，便于一处调参），
-        // 但"必须用绿黑系"这层隐含约束被解除 —— AGY 给的深蓝黑面板就是比绿黑好看。
+        // 优先级声明（2026-09-27 用户拍板）：**星图走深空冷色调，不再沿用主体绿黑系**。
+        // 「颜色只许来自本文件」的集中原则不变（仍然一处调参），
+        // 但"必须用绿黑系"这层隐含约束已解除 —— 深蓝黑面板就是比绿黑更贴星图。
         //
         // 说明：星网节点/连线用的 #3DDC84 / #7CFFB8 / #1E7A46 / #124228 / #FFD54F /
         // #4FD8E8 / #E8F5E9 与主调色板**同值**，因此不另立名目，直接复用上面的字段。
 
-        /// <summary>星网面板底色 #0D131F（AGY 稿给 85% 不透明度）——比绿黑更冷、更"深空"。</summary>
+        /// <summary>星网面板底色 #0D131F（85% 不透明度）——比绿黑更冷、更"深空"。</summary>
         public static readonly Color StarCardBg = new Color(13, 19, 31, 217);
 
         /// <summary>星网面板/详情卡边框 #3A4D6B（石板蓝）。</summary>
@@ -70,7 +70,7 @@ namespace 可成长的孔雀翎
         /// <summary>星网面板边框暗阶（未激活/次级分隔）。</summary>
         public static readonly Color StarCardBorderDim = new Color(29, 38, 53);
 
-        /// <summary>星网详情卡上的冷白正文（用于 AGY 稿的字段色，比 TextLight 更冷）。</summary>
+        /// <summary>星网详情卡上的冷白正文（用于星网字段色，比 TextLight 更冷）。</summary>
         public static readonly Color StarInk = new Color(220, 228, 242);
 
         /// <summary>星网详情卡次级文字（冷灰蓝）。</summary>

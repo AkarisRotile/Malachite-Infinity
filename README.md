@@ -120,20 +120,15 @@
 
 ## ✦ 开发
 
+本仓库自带两个脚本（`工具/`）：
+
 ```powershell
 # 门禁：编译 + 结构审计（红线扫描）
-powershell -NoProfile -File .\写法\_tools\Mod-Gate.ps1
+powershell -NoProfile -File .\工具\Mod-Gate.ps1
+
+# 全量镜像同步到 tModLoader 的 ModSources（含删除已移除文件）
+powershell -NoProfile -File .\工具\Sync-ToModSources.ps1
 ```
-
-接手开发前建议先读：
-
-| 文档 | 内容 |
-|---|---|
-| `写法/开发工作流.md` | 铁律 R1~R9、阶段 A~G、完成定义（DoD） |
-| `写法/当前状态与交接总览.md` | 最浓缩的现状与下一步入口 |
-| `写法/阶段4_星图3.0_翎羽星网.md` | 天赋系统的实施规格 |
-| `写法/代码结构地图.md` | 逐文件职责与维护坑 |
-| `写法/开源参考与合规规范.md` | 外部参考的定级与署名规则 |
 
 **架构上值得一提的一点**：绘制层（`Core/Vfx/`）刻意做成**零 Terraria 依赖** ——
 只引用 `Microsoft.Xna.Framework` 的 `SpriteBatch`，全层不出现 `using Terraria.*`。

@@ -3,10 +3,9 @@
 // ============================================================================
 // 星图 3.0 ·「翎羽星网」—— 界面层
 // ============================================================================
-// 设计依据：写法\阶段4_星图3.0_翎羽星网.md（D23~D28）
-// 布局与动效参数来源：AGY 咨询稿（写法\_agy\reply_01~03）。
-//   **配色优先级（2026-09-27 用户拍板）**：与既有调色板冲突时以 AGY 为准；
-//   AGY 的色值已收编进 MalachitePalette（StarCardBg / StarCardBorder / StarInk …）。
+// 布局与动效：星图 3.0「翎羽星网」定稿。
+//   **配色（2026-09-27 用户拍板）**：星图走深空冷色调；
+//   所有色值集中在 MalachitePalette（StarCardBg / StarCardBorder / StarInk …）。
 //
 // 与旧版（阶段 2）的关键差别：
 //   1. **单页**：取消「力/技」翻页，五轨 + 纹章节点全部并入一张星网。
@@ -192,7 +191,7 @@ namespace 可成长的孔雀翎
     /// <summary>星图 3.0 面板（单页星网）。</summary>
     public class StarMapUIState : UIState
     {
-        // ==================== 布局常量（AGY §4.4，面板绝对坐标）====================
+        // ==================== 布局常量（面板绝对坐标）====================
         private const float PanelW = 700f, PanelH = 500f;
         private const float TitleX = 30f, TitleY = 20f;
         private const float StatusX = 150f, StatusY = 20f, StatusW = 480f;

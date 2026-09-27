@@ -193,7 +193,7 @@ namespace 可成长的孔雀翎
             Lighting.AddLight(Projectile.Center, 0.20f, 0.72f, 0.45f);
         }
 
-        /// <summary>收尾：崩解为向外爆散的星尘（AGY：24 颗）。</summary>
+        /// <summary>收尾：崩解为向外爆散的星尘（24 颗）。</summary>
         public override void OnKill(int timeLeft)
         {
             if (!EffectLimiterSystem.CanSpawnEffect(6, 160)) return;
