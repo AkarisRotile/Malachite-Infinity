@@ -145,7 +145,7 @@ function Invoke-Audit {
     $magicProj = @(); $magicOther = @()
     foreach ($f in $csFiles) {
         $rel = Get-RelPath $f
-        if ((Get-Content $f.FullName -Raw) -match 'TextureAssets\.MagicPixel') {
+        if ((Get-Content $f.FullName -Raw -Encoding UTF8) -match 'TextureAssets\.MagicPixel') {
             if ($rel -like 'Projectiles\*') { $magicProj += $rel } else { $magicOther += $rel }
         }
     }
@@ -162,7 +162,7 @@ function Invoke-Audit {
     $usingCal = @()
     foreach ($f in $csFiles) {
         $rel = Get-RelPath $f
-        if ((Get-Content $f.FullName -Raw) -match '(?m)^\s*using\s+CalamityMod(\s|\.|;)') { $usingCal += $rel }
+        if ((Get-Content $f.FullName -Raw -Encoding UTF8) -match '(?m)^\s*using\s+CalamityMod(\s|\.|;)') { $usingCal += $rel }
     }
     if ($usingCal.Count -eq 0) { Write-Pass '无 using CalamityMod（灾厄编译期依赖 = 0）' }
     else { Write-Fail "发现 using CalamityMod（$($usingCal.Count) 处）：$($usingCal -join '、')" }
@@ -172,7 +172,7 @@ function Invoke-Audit {
     foreach ($f in $csFiles) {
         $rel = Get-RelPath $f
         if ($rel -eq $paletteRel -or $rel -eq $uiRel) { continue }
-        $count = ([regex]::Matches((Get-Content $f.FullName -Raw), 'new Color\(\s*\d+')).Count
+        $count = ([regex]::Matches((Get-Content $f.FullName -Raw -Encoding UTF8), 'new Color\(\s*\d+')).Count
         if ($count -gt 0) { $colorFiles += "$rel ($count)" }
     }
     if ($colorFiles.Count -eq 0) {
@@ -187,7 +187,7 @@ function Invoke-Audit {
         $rel = Get-RelPath $f
         if ($rel -in $softRefAllow) { continue }
         $hit = 0
-        foreach ($ln in (Get-Content $f.FullName)) {
+        foreach ($ln in (Get-Content $f.FullName -Encoding UTF8)) {
             $t = $ln.TrimStart()
             if ($t.StartsWith('//')) { continue }
             if ($t -match 'CalamityMod') { $hit++ }
@@ -204,7 +204,7 @@ function Invoke-Audit {
     $noHeaderProj = @(); $withHeader = 0
     foreach ($f in $csFiles) {
         $rel = Get-RelPath $f
-        $head = (Get-Content $f.FullName -TotalCount 20) -join "`n"
+        $head = (Get-Content $f.FullName -Encoding UTF8 -TotalCount 20) -join "`n"
         if ($head -match '署名|自主实现|参考|Azafure|hocha113|CalamityModPublic|CalamityOverhaul') {
             $withHeader++
         } elseif ($rel -like 'Projectiles\*') {

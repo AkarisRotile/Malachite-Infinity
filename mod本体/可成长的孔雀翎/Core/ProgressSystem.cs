@@ -45,7 +45,7 @@ namespace 可成长的孔雀翎
             return 0;
         }
 
-        /// <summary>是否处于月总后的挑战档（stage 10+；规则 M4 细化，先预留）。</summary>
+        /// <summary>是否处于月总后的挑战档（实现口径 stage 9+，即月总已败；M4 若扩展 10+ 档再收紧）。</summary>
         public static bool InEndgame(int stage) => stage >= 9;
     }
 }

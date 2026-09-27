@@ -1,3 +1,22 @@
+// 本文件为自主实现，无外部参考代码。
+//
+// ============================================================================
+// 星图 3.0 ·「翎羽星网」—— 界面层
+// ============================================================================
+// 设计依据：写法\阶段4_星图3.0_翎羽星网.md（D23~D28）
+// 布局与动效参数来源：AGY 咨询稿（写法\_agy\reply_01~03）。
+//   **配色优先级（2026-09-27 用户拍板）**：与既有调色板冲突时以 AGY 为准；
+//   AGY 的色值已收编进 MalachitePalette（StarCardBg / StarCardBorder / StarInk …）。
+//
+// 与旧版（阶段 2）的关键差别：
+//   1. **单页**：取消「力/技」翻页，五轨 + 纹章节点全部并入一张星网。
+//   2. **命中判定取消兜底热区**：旧版有 96px 的"轨道大圆"兜底，会把中心区点击全吃掉；
+//      本版只有"最近节点 + 18px 半径"一条路径。
+//   3. **加点有反馈**：流光沿最短路径从翎心涌向新节点 → 落点爆闪 → 音效（旧版改完数字直接重建 UI 树）。
+//   4. **指针坐标空间**：`Main.MouseScreen` 与 `UIElement.GetDimensions()` **本就是同一空间**，直接相减。
+//      ⚠ 不要"自作聪明"再除 `Main.UIScale` —— 2026-09-27 我这么干过，实机表现是
+//      "鼠标离节点很远才选中、偏移随屏幕坐标线性放大"。证据与推理链见 `MouseUi()` 的注释。
+
 using System;
 using System.Collections.Generic;
 using Terraria;
@@ -5,131 +24,229 @@ using Terraria.ID;
 using Terraria.Audio;
 using Terraria.ModLoader;
 using Terraria.UI;
+using Terraria.GameContent;
 using Terraria.GameContent.UI.Elements;
+using ReLogic.Graphics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace 可成长的孔雀翎
 {
-    /// <summary>
-    /// 星图页签（v2 翻页骨架，设计依据：写法\阶段2_天赋星图重设计.md §7.1）。
-    /// 页 0 = 属性加点（五轨小节点）；页 1 = 技（大节点/攻击模式占位）。
-    /// 加页流程：enum 增加成员 → 在 StarMapUIState 构造器注册构建委托，无需改既有页。
-    /// </summary>
-    public enum StarMapPage
+    /// <summary>细细的分隔线（详情卡用）。</summary>
+    internal class HairLine : UIElement
     {
-        Attributes = 0,
-        Skills = 1
-    }
-
-    /// <summary>逐级小圆点（当前等级 / 上限点阵）。</summary>
-    public class PipBarElement : UIElement
-    {
-        public int Value;
-        public int Cap;
-
-        private const int PipW = 8;
-        private const int PipH = 14;
-        private const int Step = 13; // 每颗步距（含间距）
-
-        public PipBarElement(int value, int cap)
-        {
-            Value = value;
-            Cap = Math.Max(0, cap);
-            Width.Set(Cap * Step + 4, 0f);
-            Height.Set(PipH + 4, 0f);
-        }
+        public Color LineColor = Color.White;
 
         protected override void DrawSelf(SpriteBatch spriteBatch)
         {
             base.DrawSelf(spriteBatch);
-            CalculatedStyle dim = GetDimensions();
-            Texture2D pixel = Terraria.GameContent.TextureAssets.MagicPixel.Value;
+            CalculatedStyle d = GetDimensions();
+            spriteBatch.Draw(AdditiveLayer.Pixel,
+                new Rectangle((int)d.X, (int)d.Y, Math.Max(1, (int)d.Width), Math.Max(1, (int)d.Height)),
+                LineColor);
+        }
+    }
 
-            for (int i = 0; i < Cap; i++)
+    /// <summary>
+    /// 星图入口纹章（常驻旋转）。手持孔雀柳刃时才显示，悬停平滑放大提亮。
+    /// <para/>批次纪律：纹章是加色发光结构，tML UI 默认批次是 AlphaBlend，不换批次会整体发暗。
+    /// </summary>
+    public class SigilEntryElement : UIElement
+    {
+        private const float BaseScale = 0.30f;
+
+        private bool _hover;
+        private float _hoverK;
+
+        public void SetHover(bool on) => _hover = on;
+
+        protected override void DrawSelf(SpriteBatch spriteBatch)
+        {
+            base.DrawSelf(spriteBatch);
+
+            // UI 绘制异常若漏到 tML 的 UI 系统会直接崩游戏，按项目惯例（MeleeSlashProj.PreDraw）兜住。
+            try
             {
-                Color c = i < Value
-                    ? (i == Value - 1 ? MalachitePalette.GreenBright : MalachitePalette.PrimaryGreen)
-                    : MalachitePalette.GreenDeep;
-                float x = dim.X + i * Step + 2f;
-                float y = dim.Y + 2f;
-                spriteBatch.Draw(pixel, new Rectangle((int)x, (int)y, PipW, PipH), c * 0.9f);
+                CalculatedStyle dim = GetDimensions();
+                Vector2 center = dim.Center();
+                _hoverK = MathHelper.Lerp(_hoverK, _hover ? 1f : 0f, 0.18f);
+
+                Texture2D flare = TextureAssets.Extra[ExtrasID.SharpTears].Value;
+                Texture2D bloom = TextureAssets.Extra[ExtrasID.ThePerfectGlow].Value;
+                Texture2D pixel = AdditiveLayer.Pixel;
+
+                spriteBatch.End();
+                spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, SamplerState.LinearClamp,
+                    DepthStencilState.None, RasterizerState.CullNone, null, Main.UIScaleMatrix);
+
+                VfxDraw.DrawIdleSigil(spriteBatch, flare, bloom, pixel, center,
+                    Main.GameUpdateCount, BaseScale * (dim.Width / 72f), _hoverK,
+                    MalachitePalette.GreenBright, MalachitePalette.AccentGold, MalachitePalette.AccentCyan);
+
+                spriteBatch.End();
+                spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
+                    DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+            }
+            catch
+            {
+                try
+                {
+                    spriteBatch.End();
+                    spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, Main.DefaultSamplerState,
+                        DepthStencilState.None, RasterizerState.CullCounterClockwise, null, Main.UIScaleMatrix);
+                }
+                catch { /* 已尽力 */ }
             }
         }
     }
 
     /// <summary>
-    /// v2 天赋星图 UI（可翻页）。
-    /// 旧 Sigil 星图（原 MalachiteUI.cs 内）已于 M3 整体退役，本类为替代实现；
-    /// 对话/History UI 冻结不动，仅本星图 + MalachiteUISystem 接入。
+    /// 星网画布元素：把绘制完全委托给 <see cref="StarWebVfx"/>（几何渲染），
+    /// 本类只负责"算坐标 / 传状态"。
     /// </summary>
-    public class StarMapUIState : UIState
+    public class StarWebElement : UIElement
     {
-        // ==================== 状态 ====================
-        /// <summary>主面板是否展开。</summary>
-        public bool IsVisible = false;
+        public const float CanvasSize = StarWebVfx.CanvasSize;
 
-        /// <summary>当前页索引（0 起）。</summary>
-        public int CurrentPageIndex => _pageIndex;
+        /// <summary>
+        /// 星网中心在本元素内的局部坐标。
+        /// <para/>★ 2026-09-27 起**不再用画布几何中心**，而是由"墨迹包围盒"反算：
+        /// 五臂角度已按用户要求**刻意不等距**（去对称化，见 `StarWebLayout.ArmDeg`），
+        /// 加上每节点的确定性抖动，墨迹中心离几何中心有偏移。
+        /// 实测包围盒 `x[-0.887..0.997] y[-0.978..0.841]` → 墨迹中心 `(0.055, -0.069)`，
+        /// <para/>⚠ **节点视觉外延左右不对称**（实测：右 28.5px / 左 14.2px），所以不能按"居中"取 162，
+/// 而要按外延反解：`cX ∈ [14.2 + 0.887R, 310.5 − 0.997R]` → R=152 时 [149, 159]，取 154（左右各留 5px）。
+/// 纵向同理：`cY ∈ [166, 185]`，取 180。**改动节点表后必须重跑 STARWEB_BBOX/EXTREMES 并复核这里。**
+        /// <para/>量测方式：跑 `工具\VfxPreview`，读它打印的 `STARWEB_BBOX` 一行。
+        /// **改动节点表的角度/半径后必须重跑一次并更新这里**，否则星网会偏出画布。
+        /// </summary>
+        public static readonly Vector2 LocalCenter = StarWebVfx.CanvasCenter;
 
-        /// <summary>总页数（由注册表推导，便于加页）。</summary>
-        public int PageCount => _pageBuilders.Count;
+        /// <summary>
+        /// 渲染半径（px）：归一化 1.0 对应多少像素。
+        /// <para/>取 152 由包围盒半跨度反算：半跨度 (0.942, 0.909)，加节点视觉外延 ≈20px，
+        /// 需满足 `半跨度·R + 20 ≤ 170` → R ≤ 159；取 152 留出余量。
+        /// 实测四边留白：上 11.3 / 下 12.2 / 左 7.2 / 右 6.5 px，全部落在 340×340 画布内。
+        /// </summary>
+        public const float RenderRadius = StarWebVfx.CanvasRenderRadius;
 
-        private int _pageIndex = 0;
-        private UIPanel _mainPanel;
-        private UIElement _pageHost;
-        private UIPanel _entryButton;
+        /// <summary>已点亮集合（每帧由 UIState 注入）。</summary>
+        public ICollection<string> Lit;
 
-        private readonly List<UIPanel> _tabButtons = new List<UIPanel>();
-        private UIText _pageLabel;
+        /// <summary>可购买集合（每帧由 UIState 注入）。</summary>
+        public ICollection<string> Purchasable;
 
-        /// <summary>反馈行文案（加点失败原因等；成功操作时清空）。</summary>
-        private string _notice = "";
+        /// <summary>悬停节点 id。</summary>
+        public string HoverId;
 
-        /// <summary>上一帧库存键状态（用于关闭请求边沿检测）。</summary>
-        private bool _prevInventoryKey = false;
+        /// <summary>加点流光状态（可 null）。</summary>
+        public StarSweepState Sweep;
 
-        // ==================== 翻页注册表（页 → 内容构建委托）====================
-        private readonly Dictionary<int, Action<StarMapUIState>> _pageBuilders =
-            new Dictionary<int, Action<StarMapUIState>>();
-
-        // 页签文案（中/英）——「力/技」呼应：力=属性加点，技=技能占位
-        private static readonly (string zh, string en)[] PageTitles =
+        public StarWebElement()
         {
-            ("力", "Power"),
-            ("技", "Skill")
-        };
-
-        public StarMapUIState()
-        {
-            // 加页：在 StarMapPage 增加成员后，在此注册一个构建方法即可。
-            _pageBuilders[(int)StarMapPage.Attributes] = (ui) => ui.BuildAttributesPage();
-            _pageBuilders[(int)StarMapPage.Skills] = (ui) => ui.BuildSkillsPage();
+            Width.Set(CanvasSize, 0f);
+            Height.Set(CanvasSize, 0f);
         }
 
-        // ==================== 初始化：左下角入口按钮 ====================
+        /// <summary>星图中心在屏幕（UI 像素）坐标中的位置。</summary>
+        public Vector2 ScreenCenter()
+        {
+            CalculatedStyle dim = GetDimensions();
+            return new Vector2(dim.X, dim.Y) + LocalCenter;
+        }
+
+        /// <summary>鼠标（UI 像素）→ 本元素局部坐标。</summary>
+        public Vector2 ToLocal(Vector2 mouseUi)
+        {
+            CalculatedStyle dim = GetDimensions();
+            return mouseUi - new Vector2(dim.X, dim.Y);
+        }
+
+        /// <summary>命中判定（转发给 StarWebVfx，保证"看到的"与"点到的"用同一份坐标）。</summary>
+        public string HitTest(Vector2 mouseUi)
+            => StarWebVfx.HitTest(LocalCenter, RenderRadius, ToLocal(mouseUi));
+
+        protected override void DrawSelf(SpriteBatch spriteBatch)
+        {
+            base.DrawSelf(spriteBatch);
+
+            try
+            {
+                StarWebVfx.Draw(spriteBatch, spriteBatch.GraphicsDevice, ScreenCenter(), RenderRadius,
+                    Main.GameUpdateCount, Lit, Purchasable, HoverId, Main.UIScaleMatrix, Sweep);
+            }
+            catch
+            {
+                // 绘制异常漏出去会崩游戏；同时必须保证批次被还原成 Additive，
+                // 否则同层的纹章入口会整体发暗（历史事故）。
+                try
+                {
+                    spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, SamplerState.LinearClamp,
+                        DepthStencilState.None, RasterizerState.CullNone, null, Main.UIScaleMatrix);
+                }
+                catch { }
+            }
+        }
+    }
+
+    /// <summary>星图 3.0 面板（单页星网）。</summary>
+    public class StarMapUIState : UIState
+    {
+        // ==================== 布局常量（AGY §4.4，面板绝对坐标）====================
+        private const float PanelW = 700f, PanelH = 500f;
+        private const float TitleX = 30f, TitleY = 20f;
+        private const float StatusX = 150f, StatusY = 20f, StatusW = 480f;
+        private const float CloseX = 650f, CloseY = 20f, CloseSize = 24f;
+        private const float CanvasX = 40f, CanvasY = 90f;
+        private const float RespecX = 110f, RespecY = 446f, RespecW = 200f, RespecH = 34f;
+        private const float DetailX = 410f, DetailY = 70f, DetailW = 266f, DetailH = 370f;
+        private const float NoticeX = 410f, NoticeY = 446f, NoticeW = 266f, NoticeH = 34f;
+        private const float Pad = 16f;
+
+        // ==================== 状态 ====================
+        public bool IsVisible;
+
+        private UIPanel _mainPanel;
+        private UIPanel _detailCard;
+        private StarWebElement _web;
+        private SigilEntryElement _entryButton;
+        private UIText _statusText;
+        private UIText _noticeText;
+
+        private string _hoverId;
+        private string _detailFor;      // 详情卡当前渲染的节点（避免每帧重建 UI 树）
+        private string _notice = "";
+        private bool _noticeIsError;
+        private int _noticeTimer;
+
+        private bool _prevLeftDown, _prevRightDown, _prevInventoryKey;
+
+        /// <summary>每帧算出的"可购买"集合（相邻 + 点数够 + 门槛达成）。</summary>
+        private readonly HashSet<string> _purchasable = new HashSet<string>();
+
+        // ---- 加点流光 ----
+        private readonly StarSweepState _sweep = new StarSweepState();
+        private float _sweepTotalPx;
+        private bool _sweepBurstFired;
+
+        public StarMapUIState() { }
+
+        // ==================== 初始化：左下角入口纹章 ====================
 
         public override void OnInitialize()
         {
-            _entryButton = new UIPanel();
+            _entryButton = new SigilEntryElement();
             _entryButton.Left.Set(20, 0f);
-            _entryButton.Top.Set(-60, 1f); // 左下角悬浮入口
-            _entryButton.Width.Set(130, 0f);
-            _entryButton.Height.Set(40, 0f);
-            _entryButton.BackgroundColor = MalachitePalette.GreenDark * 0.85f;
-            _entryButton.BorderColor = MalachitePalette.PrimaryGreen;
+            _entryButton.Top.Set(-96, 1f);
+            _entryButton.Width.Set(72, 0f);
+            _entryButton.Height.Set(72, 0f);
 
             _entryButton.OnMouseOver += (evt, element) =>
             {
-                _entryButton.BackgroundColor = MalachitePalette.GreenDeep * 0.95f;
-                _entryButton.BorderColor = MalachitePalette.GreenBright;
+                _entryButton.SetHover(true);
                 SoundEngine.PlaySound(SoundID.MenuTick);
             };
-            _entryButton.OnMouseOut += (evt, element) =>
-            {
-                _entryButton.BackgroundColor = MalachitePalette.GreenDark * 0.85f;
-                _entryButton.BorderColor = MalachitePalette.PrimaryGreen;
-            };
+            _entryButton.OnMouseOut += (evt, element) => _entryButton.SetHover(false);
             _entryButton.OnLeftClick += (evt, element) =>
             {
                 SoundEngine.PlaySound(IsVisible ? SoundID.MenuClose : SoundID.MenuOpen);
@@ -137,90 +254,103 @@ namespace 可成长的孔雀翎
                 else OpenPanel();
             };
 
-            UIText btnText = MakeCenteredText(MalachiteData.Loc("✦ 天赋星图", "✦ Talent Star Map"), 0.85f, MalachitePalette.TextLight);
-            _entryButton.Append(btnText);
             Append(_entryButton);
         }
 
-        // ==================== 翻页公开接口 ====================
-
-        /// <summary>跳转到指定页（越界自动钳制；同页重进则刷新内容）。</summary>
-        public void GoToPage(int pageIndex)
-        {
-            if (_pageBuilders.Count == 0) return;
-            _pageIndex = Math.Clamp(pageIndex, 0, _pageBuilders.Count - 1);
-            RefreshNavVisuals();
-            RebuildCurrentPage();
-        }
-
-        /// <summary>下一页（到末页后不再前进）。</summary>
-        public void NextPage() => GoToPage(_pageIndex + 1);
-
-        /// <summary>上一页（到首页后不再后退）。</summary>
-        public void PrevPage() => GoToPage(_pageIndex - 1);
-
         // ==================== 面板开关 ====================
 
-        private void OpenPanel()
+        public void OpenPanel()
         {
             if (_mainPanel != null) RemoveChild(_mainPanel);
             IsVisible = true;
             _notice = "";
+            _noticeTimer = 0;
+            _detailFor = null;
+            _hoverId = null;
+            _sweep.Reset();
 
             _mainPanel = new UIPanel();
-            _mainPanel.Width.Set(700, 0f);
-            _mainPanel.Height.Set(500, 0f);
+            _mainPanel.Width.Set(PanelW, 0f);
+            _mainPanel.Height.Set(PanelH, 0f);
             _mainPanel.HAlign = 0.5f;
             _mainPanel.VAlign = 0.5f;
-            _mainPanel.BackgroundColor = MalachitePalette.BackgroundDeep;
-            _mainPanel.BorderColor = MalachitePalette.PrimaryGreen * 0.8f;
+            _mainPanel.BackgroundColor = MalachitePalette.StarCardBg;
+            _mainPanel.BorderColor = MalachitePalette.StarCardBorder;
             _mainPanel.SetPadding(0);
 
             // —— 标题 ——
-            UIText title = MakeCenteredText(MalachiteData.Loc("—— 天 赋 星 图 ——", "—— TALENT STAR MAP ——"), 1.1f, MalachitePalette.GreenBright);
-            title.Top.Set(10, 0f);
+            UIText title = MakeText(MalachiteData.Loc("翎 羽 星 网", "STAR WEB"), 1.1f, MalachitePalette.GreenBright);
+            title.Left.Set(TitleX, 0f);
+            title.Top.Set(TitleY, 0f);
             _mainPanel.Append(title);
 
-            // —— 关闭按钮（右上角）——
-            UIPanel closeBtn = MakeButton("✕", 0.85f, MalachitePalette.TextLight, () =>
+            // —— 顶部状态条 ——
+            _statusText = MakeText("", 0.86f, MalachitePalette.StarInk);
+            _statusText.Left.Set(StatusX, 0f);
+            _statusText.Top.Set(StatusY + 4f, 0f);
+            _statusText.Width.Set(StatusW, 0f);
+            _mainPanel.Append(_statusText);
+
+            // —— 关闭按钮 ——
+            UIPanel closeBtn = MakeButton("✕", 0.85f, MalachitePalette.StarInk, () =>
             {
                 SoundEngine.PlaySound(SoundID.MenuClose);
                 HidePanel();
             });
-            closeBtn.Left.Set(-38, 1f);
-            closeBtn.Top.Set(10, 0f);
+            closeBtn.Width.Set(CloseSize, 0f);
+            closeBtn.Height.Set(CloseSize, 0f);
+            closeBtn.Left.Set(CloseX, 0f);
+            closeBtn.Top.Set(CloseY, 0f);
             _mainPanel.Append(closeBtn);
 
-            // —— 顶栏页签（居中并排）——
-            float total = PageTitles.Length * 140 - 10;
-            for (int i = 0; i < PageTitles.Length; i++)
-            {
-                int idx = i;
-                UIPanel tab = MakeButton(PageTitles[i].zh, 0.9f, MalachitePalette.TextLight, () =>
-                {
-                    SoundEngine.PlaySound(SoundID.MenuTick);
-                    GoToPage(idx);
-                });
-                tab.Width.Set(130, 0f);
-                tab.Height.Set(28, 0f);
-                tab.Left.Set(-total / 2f + idx * 140, 0.5f);
-                tab.Top.Set(44, 0f);
-                _mainPanel.Append(tab);
-                _tabButtons.Add(tab);
-            }
+            // —— 星网画布 ——
+            _web = new StarWebElement();
+            _web.Left.Set(CanvasX, 0f);
+            _web.Top.Set(CanvasY, 0f);
+            _mainPanel.Append(_web);
 
-            // 说明：用户反馈 ◀/▶ 翻页箭头观感不佳已移除；
-            // 翻页仍由顶栏页签触发（GoToPage），编程翻页接口 Next/Prev/GoToPage 保留给后续"技"页使用。
-            // —— 页面内容挂载区 ——
-            _pageHost = new UIElement();
-            _pageHost.Left.Set(10, 0f);
-            _pageHost.Top.Set(98, 0f);
-            _pageHost.Width.Set(680, 0f);
-            _pageHost.Height.Set(394, 0f);
-            _mainPanel.Append(_pageHost);
+            // —— 右侧详情卡 ——
+            _detailCard = new UIPanel();
+            _detailCard.Width.Set(DetailW, 0f);
+            _detailCard.Height.Set(DetailH, 0f);
+            _detailCard.Left.Set(DetailX, 0f);
+            _detailCard.Top.Set(DetailY, 0f);
+            _detailCard.BackgroundColor = MalachitePalette.StarCardBg;
+            _detailCard.BorderColor = MalachitePalette.StarCardBorder;
+            _detailCard.SetPadding(0);
+            _mainPanel.Append(_detailCard);
+
+            // —— 一键洗点 ——
+            UIPanel respec = MakeButton(MalachiteData.Loc("一键洗点（全额退还）", "Respec All (full refund)"),
+                0.80f, MalachitePalette.AccentGold, () =>
+                {
+                    var mp = LocalMp();
+                    if (mp == null) return;
+                    if (mp.StarNodes.Count <= 1)
+                    {
+                        SetNotice(MalachiteData.Loc("没有可退还的星。", "Nothing to refund."), true);
+                        return;
+                    }
+                    int back = mp.RespecAllStars();
+                    SoundEngine.PlaySound(SoundID.MenuClose);
+                    SetNotice(MalachiteData.Loc($"已洗点，退还 {back} 点技能点。", $"Respec complete. Refunded {back} points."), false);
+                    RefreshDetail(force: true);
+                });
+            respec.Width.Set(RespecW, 0f);
+            respec.Height.Set(RespecH, 0f);
+            respec.Left.Set(RespecX, 0f);
+            respec.Top.Set(RespecY, 0f);
+            _mainPanel.Append(respec);
+
+            // —— 底部反馈行 ——
+            _noticeText = MakeText("", 0.74f, MalachitePalette.StarInkDim);
+            _noticeText.Left.Set(NoticeX, 0f);
+            _noticeText.Top.Set(NoticeY + 6f, 0f);
+            _noticeText.Width.Set(NoticeW, 0f);
+            _mainPanel.Append(_noticeText);
 
             Append(_mainPanel);
-            GoToPage(_pageIndex); // 恢复上次所在页并首建内容
+            RefreshDetail(force: true);
             Recalculate();
         }
 
@@ -231,202 +361,18 @@ namespace 可成长的孔雀翎
                 RemoveChild(_mainPanel);
                 _mainPanel = null;
             }
+            _web = null;
+            _detailCard = null;
+            _statusText = null;
+            _noticeText = null;
+            _detailFor = null;
+            _hoverId = null;
+            _sweep.Reset();
             IsVisible = false;
             Recalculate();
         }
 
-        // ==================== 页内容刷新 ====================
-
-        private void RebuildCurrentPage()
-        {
-            if (_pageHost == null || _pageBuilders.Count == 0) return;
-            _pageHost.RemoveAllChildren();
-            _pageBuilders[_pageIndex](this);
-            _pageHost.Recalculate();
-        }
-
-        private void RefreshNavVisuals()
-        {
-            if (_pageLabel != null)
-                _pageLabel.SetText(MalachiteData.Loc(
-                    $"{_pageIndex + 1} / {_pageBuilders.Count}  ·  {PageTitles[_pageIndex].zh}",
-                    $"{_pageIndex + 1} / {_pageBuilders.Count}  ·  {PageTitles[_pageIndex].en}"));
-
-            for (int i = 0; i < _tabButtons.Count; i++)
-            {
-                bool active = i == _pageIndex;
-                _tabButtons[i].BackgroundColor = active ? MalachitePalette.GreenDark * 0.95f : MalachitePalette.BackgroundDeep;
-                _tabButtons[i].BorderColor = active ? MalachitePalette.GreenBright : MalachitePalette.GreenDeep;
-            }
-        }
-
-        // ==================== 页 0：属性加点 ====================
-
-        private void BuildAttributesPage()
-        {
-            var mp = LocalMp();
-            if (mp == null) return;
-            int stage = Math.Clamp(ProgressSystem.GetStage(), 0, MalachiteData.StageInfos.Length - 1);
-            var stageData = MalachiteData.StageInfos[stage];
-
-            // 顶部：技能点余额 / 阶段
-            UIText balance = MakeText(MalachiteData.Loc(
-                $"技能点余额：{mp.SkillPoints}       阶段：{stage} · {stageData.Title}",
-                $"Skill Points: {mp.SkillPoints}       Stage: {stage} · {stageData.Title}"), 1.0f,
-                mp.SkillPoints > 0 ? MalachitePalette.AccentGold : MalachitePalette.TextDim);
-            balance.Left.Set(2, 0f);
-            balance.Top.Set(0, 0f);
-            _pageHost.Append(balance);
-
-            // 五行轨道
-            int rowY = 40;
-            const int rowH = 66;
-            for (int i = 0; i < TalentCatalog.TrackCount; i++)
-            {
-                TrackKind kind = (TrackKind)i;
-                int cur = mp.TrackLevel[i];
-                int cap = TalentCatalog.LevelCap(kind, stage);
-                int next = cur + 1;
-                bool atCap = cur >= cap;
-                bool affordable = !atCap && mp.SkillPoints >= TalentCatalog.CostToNext(kind, next);
-
-                // 轨名
-                UIText name = MakeText(TalentCatalog.DisplayName(kind), 0.95f, MalachitePalette.TextLight);
-                name.Left.Set(0, 0f);
-                name.Top.Set(rowY + 2, 0f);
-                _pageHost.Append(name);
-
-                // 点阵（当前级 / 上限）
-                PipBarElement pips = new PipBarElement(cur, cap);
-                pips.Left.Set(70, 0f);
-                pips.Top.Set(rowY + 14, 0f);
-                _pageHost.Append(pips);
-
-                // 等级文本
-                UIText level = MakeText($"{cur} / {cap}", 0.8f, MalachitePalette.TextDim);
-                level.Left.Set(262, 0f);
-                level.Top.Set(rowY + 12, 0f);
-                _pageHost.Append(level);
-
-                // 下一级成本（资金不足 → 红字；满级 → 灰）
-                string costText;
-                Color costColor;
-                if (atCap)
-                {
-                    costText = MalachiteData.Loc("已满级", "MAX");
-                    costColor = MalachitePalette.TextDim;
-                }
-                else
-                {
-                    int nextCost = TalentCatalog.CostToNext(kind, next);
-                    costText = MalachiteData.Loc($"下1级 需 {nextCost} 点", $"Next: {nextCost} pts");
-                    costColor = affordable ? MalachitePalette.AccentGold : MalachitePalette.DangerRed;
-                }
-                UIText cost = MakeText(costText, 0.8f, costColor);
-                cost.Left.Set(322, 0f);
-                cost.Top.Set(rowY + 12, 0f);
-                _pageHost.Append(cost);
-
-                // 减 / 加 按钮（洗点=减级并退点；资金不足/满级 → 置灰）
-                UIPanel minus = MakeButton("−", 0.9f, MalachitePalette.TextLight, () => ModifyTrack(kind, add: false));
-                minus.Left.Set(436, 0f);
-                minus.Top.Set(rowY + 2, 0f);
-                minus.BackgroundColor = cur > 0 ? MalachitePalette.GreenDark * 0.9f : MalachitePalette.BackgroundDeep;
-                _pageHost.Append(minus);
-
-                UIPanel plus = MakeButton("＋", 0.9f, MalachitePalette.TextLight, () => ModifyTrack(kind, add: true));
-                plus.Left.Set(470, 0f);
-                plus.Top.Set(rowY + 2, 0f);
-                plus.BackgroundColor = affordable ? MalachitePalette.GreenDark * 0.9f : MalachitePalette.BackgroundDeep;
-                _pageHost.Append(plus);
-
-                // 每级效果描述（小字第二行）
-                UIText effect = MakeText(TalentCatalog.EffectDescription(kind), 0.6f, MalachitePalette.TextDim);
-                effect.Left.Set(70, 0f);
-                effect.Top.Set(rowY + 38, 0f);
-                effect.Width.Set(560, 0f);
-                _pageHost.Append(effect);
-
-                rowY += rowH;
-            }
-
-            // 底部提示/反馈行
-            UIText notice = MakeText(
-                string.IsNullOrEmpty(_notice)
-                    ? MalachiteData.Loc("− 洗点（减级）免费并退还该级消耗 ｜ 并发弹幕轨单价更高 ｜ 总暴击>100% 时溢出按比例增幅终伤",
-                        "- Respec (-) is free & refunds the level cost | Volley costs more | Crit overflow >100% boosts final damage")
-                    : _notice, 0.78f,
-                string.IsNullOrEmpty(_notice) ? MalachitePalette.TextDim : MalachitePalette.DangerRed);
-            notice.Left.Set(2, 0f);
-            notice.Top.Set(372, 0f);
-            notice.Width.Set(676, 0f);
-            _pageHost.Append(notice);
-        }
-
-        /// <summary>加点/洗点（本地即刻生效；MP 权威同步见 TODO）。</summary>
-        private void ModifyTrack(TrackKind kind, bool add)
-        {
-            var mp = LocalMp();
-            if (mp == null) return;
-            int idx = (int)kind;
-            int cur = mp.TrackLevel[idx];
-            int stage = ProgressSystem.GetStage();
-            int cap = TalentCatalog.LevelCap(kind, stage);
-
-            if (add)
-            {
-                int next = cur + 1;
-                if (!TalentCatalog.CanPurchase(kind, next, stage) || next > cap)
-                {
-                    _notice = MalachiteData.Loc("已达该轨当前阶段的等级上限。", "This track has reached the stage cap.");
-                    RebuildCurrentPage();
-                    return;
-                }
-                int cost = TalentCatalog.CostToNext(kind, next);
-                if (mp.SkillPoints < cost)
-                {
-                    _notice = MalachiteData.Loc("技能点不足！", "Not enough skill points!");
-                    RebuildCurrentPage();
-                    return;
-                }
-                mp.SkillPoints -= cost;
-                mp.TrackLevel[idx] = next;
-                // TODO(MP 同步)：后续波次补服务端权威校验与发包（msgType=2：技能点/轨道等级），当前仅本地生效。
-                SoundEngine.PlaySound(SoundID.MenuTick);
-            }
-            else
-            {
-                if (cur <= 0) return;
-                int refund = TalentCatalog.CostToNext(kind, cur); // 退回升到当前级所消耗的点数
-                mp.SkillPoints += refund;
-                mp.TrackLevel[idx] = cur - 1;
-                // TODO(MP 同步)：同上 —— 洗点同样需在权威波次做校验与发包。
-                SoundEngine.PlaySound(SoundID.MenuTick);
-            }
-            _notice = "";
-            RebuildCurrentPage();
-        }
-
-        // ==================== 页 1：技（占位） ====================
-
-        private void BuildSkillsPage()
-        {
-            UIText title = MakeCenteredText(MalachiteData.Loc("【技】大节点 · 攻击模式", "[Skills] Major Nodes · Attack Modes"), 1.0f, MalachitePalette.TextDim);
-            title.Top.Set(130, 0f);
-            _pageHost.Append(title);
-
-            UIText body = MakeCenteredText(MalachiteData.Loc("待开放：大节点技能 / 攻击模式将在后续版本解锁。",
-                "Coming soon: major node skills & attack modes unlock in a later version."), 0.95f, MalachitePalette.TextDim);
-            body.Top.Set(180, 0f);
-            _pageHost.Append(body);
-
-            UIText hint = MakeCenteredText(MalachiteData.Loc("（本页为预留区域，后续只做注册式加页，不改既有结构）",
-                "(Reserved area; future pages will be added via registration only.)"), 0.7f, MalachitePalette.TextDim * 0.7f);
-            hint.Top.Set(240, 0f);
-            _pageHost.Append(hint);
-        }
-
-        // ==================== 常驻更新 ====================
+        // ==================== 每帧 ====================
 
         public override void Update(GameTime gameTime)
         {
@@ -437,11 +383,17 @@ namespace 可成长的孔雀翎
             bool isHolding = player != null && player.active && !player.dead
                              && MalachiteCache.IsMalachiteItem(player.HeldItem);
 
-            // 入口按钮：手持孔雀柳刃才显示
+            // 入口纹章：手持孔雀柳刃才显示
             if (isHolding && _entryButton != null && _entryButton.Parent == null) Append(_entryButton);
             else if (!isHolding && _entryButton != null && _entryButton.Parent != null) RemoveChild(_entryButton);
 
-            // 不手持时自动收起
+            // 悬停态校正：鼠标快速移出、或元素被移出树时 OnMouseOut 不一定触发，
+            // 不校正会让纹章卡在"放大提亮"态。
+            if (_entryButton != null && _entryButton.Parent != null)
+                _entryButton.SetHover(_entryButton.IsMouseHovering);
+            else
+                _entryButton?.SetHover(false);
+
             if (!isHolding && IsVisible)
             {
                 SoundEngine.PlaySound(SoundID.MenuClose);
@@ -450,7 +402,35 @@ namespace 可成长的孔雀翎
 
             if (!IsVisible || player == null) return;
 
-            // Esc/库存键边沿 = 关闭请求（沿用项目 UI 习惯：不吞原版输入，仅收起本面板）
+            var mp = player.GetModPlayer<MalachitePlayer>();
+
+            if (_noticeTimer > 0 && --_noticeTimer == 0 && !string.IsNullOrEmpty(_notice))
+            {
+                _notice = "";
+                if (_noticeText != null) _noticeText.SetText("");
+            }
+
+            RecomputeState(mp);
+            AdvanceSweep();
+
+            if (_web != null)
+            {
+                _web.Lit = mp.StarNodes;
+                _web.Purchasable = _purchasable;
+                _web.HoverId = _hoverId;
+                _web.Sweep = _sweep.Active ? _sweep : null;
+
+                string hover = _web.HitTest(MouseUi());
+                if (hover != _hoverId)
+                {
+                    _hoverId = hover;
+                    RefreshDetail(force: false);
+                }
+            }
+
+            HandleClicks(mp);
+
+            // 库存键边沿 = 关闭请求（沿用项目 UI 习惯：不吞原版输入，仅收起本面板）
             bool invNow = player.controlInv;
             if (invNow && !_prevInventoryKey)
             {
@@ -461,13 +441,335 @@ namespace 可成长的孔雀翎
             _prevInventoryKey = invNow;
         }
 
+        /// <summary>算"可购买"集合 + 刷新状态条文案。</summary>
+        private void RecomputeState(MalachitePlayer mp)
+        {
+            _purchasable.Clear();
+            if (mp == null) return;
+
+            foreach (StarNode n in StarNetwork.Nodes_)
+            {
+                if (StarNetwork.CanPurchase(mp.StarNodes, n.Id, mp.SkillPoints, out _) == StarBlock.None)
+                    _purchasable.Add(n.Id);
+            }
+
+            if (_statusText != null)
+            {
+                int stage = Math.Clamp(ProgressSystem.GetStage(), 0, MalachiteData.StageInfos.Length - 1);
+                string stageTitle = MalachiteData.StageInfos[stage].Title;
+                int lit = Math.Max(0, mp.StarNodes.Count);
+                _statusText.SetText(MalachiteData.Loc(
+                    $"技能点 {mp.SkillPoints}     已点亮 {lit}/{StarNetwork.TotalNodes}     阶段 {stage} · {stageTitle}",
+                    $"Points {mp.SkillPoints}     Lit {lit}/{StarNetwork.TotalNodes}     Stage {stage} · {stageTitle}"));
+                _statusText.TextColor = mp.SkillPoints > 0 ? MalachitePalette.AccentGold : MalachitePalette.StarInkDim;
+            }
+
+            if (_noticeText != null)
+                _noticeText.SetText(_notice);
+        }
+
+        // ==================== 加点 / 退还 ====================
+
+        private void HandleClicks(MalachitePlayer mp)
+        {
+            bool leftNow = Main.mouseLeft;
+            bool rightNow = Main.mouseRight;
+            bool leftEdge = leftNow && !_prevLeftDown;
+            bool rightEdge = rightNow && !_prevRightDown;
+
+            if ((leftEdge || rightEdge) && _hoverId != null && mp != null)
+            {
+                if (leftEdge) TryPurchase(mp, _hoverId);
+                else TryRefund(mp, _hoverId);
+            }
+
+            _prevLeftDown = leftNow;
+            _prevRightDown = rightNow;
+        }
+
+        private void TryPurchase(MalachitePlayer mp, string nodeId)
+        {
+            StarNode n = StarNetwork.Get(nodeId);
+            if (n == null) return;
+
+            StarBlock block = StarNetwork.CanPurchase(mp.StarNodes, nodeId, mp.SkillPoints, out string reason);
+            if (block != StarBlock.None)
+            {
+                SetNotice(reason, block != StarBlock.AlreadyLit);
+                SoundEngine.PlaySound(SoundID.MenuClose with { Volume = 0.4f, Pitch = -0.3f });
+                return;
+            }
+
+            if (!mp.PurchaseStar(nodeId)) return;
+
+            // —— 加点令牌 + 流光 ——
+            _sweep.Reset();
+            _sweep.Path = StarNetwork.PathFromRoot(mp.StarNodes, nodeId);
+            _sweep.IsNucleus = n.Kind == StarKind.Nucleus;
+            _sweep.BurstPos = n.Pos;
+            _sweep.Active = _sweep.Path.Count >= 2;
+            _sweepBurstFired = false;
+
+            _sweepTotalPx = 0f;
+            for (int i = 0; i + 1 < _sweep.Path.Count; i++)
+                _sweepTotalPx += Vector2.Distance(_sweep.Path[i], _sweep.Path[i + 1]) * StarWebElement.RenderRadius;
+
+            if (!_sweep.Active)
+            {
+                // 路径异常（理论上不会发生）也要给反馈，不能"点了没反应"
+                _sweep.BurstTimer = StarWebVfx.BurstFrames;
+            }
+
+            SoundEngine.PlaySound(SoundID.MenuTick with { Volume = 0.55f, Pitch = 0.30f });
+            SetNotice(MalachiteData.Loc($"点亮了「{StarNetwork.NameOf(n)}」。", $"Lit 「{StarNetwork.NameOf(n)}」."), false);
+            RefreshDetail(force: true);
+        }
+
+        private void TryRefund(MalachitePlayer mp, string nodeId)
+        {
+            StarNode n = StarNetwork.Get(nodeId);
+            if (n == null) return;
+
+            if (nodeId == StarNetwork.RootId)
+            {
+                SetNotice(MalachiteData.Loc("翎心是星网的根，无法退还。", "The Heart is the root of the web; it cannot be refunded."), true);
+                return;
+            }
+            if (!mp.StarNodes.Contains(nodeId))
+            {
+                SetNotice(MalachiteData.Loc("该星尚未点亮。", "That star is not lit."), true);
+                return;
+            }
+            if (!StarNetwork.CanRefund(mp.StarNodes, nodeId))
+            {
+                SetNotice(MalachiteData.Loc("退还后会让其它星失去通路，先退外圈的星。",
+                    "Refunding would orphan other stars. Refund the outer ones first."), true);
+                SoundEngine.PlaySound(SoundID.MenuClose with { Volume = 0.4f, Pitch = -0.3f });
+                return;
+            }
+
+            if (!mp.RefundStar(nodeId)) return;
+            SoundEngine.PlaySound(SoundID.MenuClose with { Volume = 0.5f, Pitch = 0.1f });
+            SetNotice(MalachiteData.Loc($"退还了「{StarNetwork.NameOf(n)}」（+{n.Cost} 点）。", $"Refunded 「{StarNetwork.NameOf(n)}」 (+{n.Cost})."), false);
+            RefreshDetail(force: true);
+        }
+
+        /// <summary>推进加点流光：彗头前进 → 到头触发落点爆闪 → 爆闪结束收尾。</summary>
+        private void AdvanceSweep()
+        {
+            if (!_sweep.Active) return;
+
+            if (_sweep.TraveledPx < _sweepTotalPx)
+            {
+                _sweep.TraveledPx += StarWebVfx.SweepSpeedPx;
+                if (_sweep.TraveledPx >= _sweepTotalPx && !_sweepBurstFired)
+                {
+                    _sweepBurstFired = true;
+                    _sweep.BurstTimer = StarWebVfx.BurstFrames;
+                    // 落点清脆铃音；星核额外叠一层低音轰鸣 + 微震屏（规格 §4.3）
+                    SoundEngine.PlaySound(SoundID.Item27 with { Volume = 0.60f, Pitch = 0.45f });
+                    if (_sweep.IsNucleus)
+                    {
+                        SoundEngine.PlaySound(SoundID.Item14 with { Volume = 0.35f, Pitch = -0.25f });
+                        ScreenShakeSystem.Shake(2f);
+                    }
+                }
+            }
+            else if (_sweep.BurstTimer > 0)
+            {
+                _sweep.BurstTimer--;
+                if (_sweep.BurstTimer <= 0) _sweep.Reset();
+            }
+            else
+            {
+                _sweep.Reset();
+            }
+        }
+
+        // ==================== 详情卡 ====================
+
+        private void RefreshDetail(bool force)
+        {
+            if (_detailCard == null) return;
+
+            string id = _hoverId ?? StarNetwork.RootId;
+            if (!force && id == _detailFor) return;
+            _detailFor = id;
+
+            _detailCard.RemoveAllChildren();
+
+            var mp = LocalMp();
+            StarNode n = StarNetwork.Get(id);
+            if (n == null || mp == null) return;
+
+            bool isLit = mp.StarNodes.Contains(id);
+            bool canBuy = _purchasable.Contains(id);
+
+            float y = Pad;
+
+            // —— 节点名 ——
+            Color nameColor = n.Kind == StarKind.Nucleus ? MalachitePalette.AccentGold : MalachitePalette.GreenBright;
+            if (!isLit && !canBuy) nameColor = MalachitePalette.StarInkDim;
+            AddCardText(StarNetwork.NameOf(n), 1.05f, nameColor, y); y += 26f;
+
+            // —— 类型标签 + 消耗 ——
+            string kindZh, kindEn;
+            switch (n.Kind)
+            {
+                case StarKind.Root: kindZh = "翎心 · 星网之根"; kindEn = "Heart · Root of the Web"; break;
+                case StarKind.Dust: kindZh = "星尘 · 属性"; kindEn = "Stardust · Attribute"; break;
+                case StarKind.Asterism: kindZh = "星宿 · 质变"; kindEn = "Asterism · Quality"; break;
+                default: kindZh = "星核 · 流派核心"; kindEn = "Nucleus · Archetype Core"; break;
+            }
+            AddCardText(MalachiteData.Loc(kindZh, kindEn), 0.72f, MalachitePalette.AccentCyan, y); y += 20f;
+
+            string costText = n.Cost <= 0
+                ? MalachiteData.Loc("消耗：无（初始点亮）", "Cost: none (lit from the start)")
+                : MalachiteData.Loc($"消耗：{n.Cost} 点", $"Cost: {n.Cost} point(s)");
+            Color costColor = n.Cost <= 0 || mp.SkillPoints >= n.Cost
+                ? MalachitePalette.AccentGold : MalachitePalette.DangerRed;
+            AddCardText(costText, 0.84f, costColor, y); y += 24f;
+
+            // —— 分隔线 ——
+            var line = new HairLine { LineColor = MalachitePalette.StarCardBorderDim };
+            line.Left.Set(Pad, 0f); line.Top.Set(y, 0f);
+            line.Width.Set(DetailW - Pad * 2f, 0f); line.Height.Set(1f, 0f);
+            _detailCard.Append(line);
+            y += 12f;
+
+            // —— 效果正文 ——
+            // 2026-09-27：改为按**实测换行高度**推进 y，而不是写死 96px ——
+            // 否则长文案换行后会盖住下面的"状态/前置"两行（用户反馈的溢出问题）。
+            const float bodyW = DetailW - Pad * 2f;
+            string body = StarNetwork.DescOf(n);
+            AddCardText(body, 0.78f, MalachitePalette.StarInk, y, bodyW);
+            y += MeasureTextHeight(body, bodyW, 0.78f) + 10f;
+
+            // —— 状态 ——
+            string statusZh, statusEn; Color statusColor;
+            if (isLit) { statusZh = "已点亮"; statusEn = "LIT"; statusColor = MalachitePalette.PrimaryGreen; }
+            else if (n.Gate != StarGate.None && !StarNetwork.RequirementMet(n))
+            { statusZh = "尚未开放"; statusEn = "LOCKED"; statusColor = MalachitePalette.DangerRed; }
+            else if (canBuy) { statusZh = "可点亮（左键）"; statusEn = "AVAILABLE (LMB)"; statusColor = MalachitePalette.AccentGold; }
+            else if (!StarNetwork.HasLitNeighbor(mp.StarNodes, id))
+            { statusZh = "需先点亮相邻的星"; statusEn = "Needs an adjacent star"; statusColor = MalachitePalette.StarInkDim; }
+            else { statusZh = "技能点不足"; statusEn = "Not enough points"; statusColor = MalachitePalette.DangerRed; }
+
+            AddCardText(MalachiteData.Loc(statusZh, statusEn), 0.80f, statusColor, y); y += 24f;
+
+            // —— 前置条件提示 ——
+            string hint = "";
+            if (n.Gate != StarGate.None && !StarNetwork.RequirementMet(n))
+                hint = StarNetwork.GateHint(n);
+            else if (isLit && id != StarNetwork.RootId)
+                hint = MalachiteData.Loc("右键退还该星（免费，全额返还）", "RMB to refund this star (free, full refund)");
+            else if (!isLit && !StarNetwork.HasLitNeighbor(mp.StarNodes, id))
+                hint = MalachiteData.Loc("连通规则：必须与已点亮的星有连线", "Must share an edge with a lit star");
+
+            if (!string.IsNullOrEmpty(hint))
+                AddCardText(hint, 0.70f, MalachitePalette.StarInkDim, y, DetailW - Pad * 2f);
+        }
+
+        private void AddCardText(string text, float scale, Color color, float top, float width = -1f)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            float w = width > 0f ? width : DetailW - Pad * 2f;
+            UIText t = MakeText(WrapText(text, w, scale), scale, color);
+            t.Left.Set(Pad, 0f);
+            t.Top.Set(top, 0f);
+            t.Width.Set(w, 0f);
+            _detailCard.Append(t);
+        }
+
+        /// <summary>
+        /// 手动换行。
+        /// <para/>★ 2026-09-27 用户反馈："节点的效果不要单行写完，现在字数多的节点的字数都远超出 UI 范围了，
+        /// 为什么不做一个换行呢"。
+        /// 为什么不能靠 UIText 自己换行：tML 的 UIText 按**空格**断词，而中文整段没有空格 → 一行直接顶出卡片。
+        /// 所以这里按**字符**量宽手动插换行；英文优先在最近的空格处断，避免把单词劈开。
+        /// </summary>
+        private static string WrapText(string text, float maxWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(text) || maxWidth <= 1f) return text;
+
+            ReLogic.Graphics.DynamicSpriteFont font = FontAssets.MouseText.Value;
+            var sb = new System.Text.StringBuilder(text.Length + 16);
+            float lineW = 0f;
+            int lastSpace = -1;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char ch = text[i];
+
+                if (ch == '\n') { sb.Append(ch); lineW = 0f; lastSpace = -1; continue; }
+
+                float chW = font.MeasureString(ch.ToString()).X * scale;
+
+                if (lineW + chW > maxWidth)
+                {
+                    // 英文尽量在最近的空格处断行；中文没有空格就按字断
+                    if (lastSpace >= 0 && sb.Length - lastSpace <= 16)
+                    {
+                        sb[lastSpace] = '\n';
+                    }
+                    else
+                    {
+                        while (sb.Length > 0 && sb[sb.Length - 1] == ' ') sb.Length--;   // 行首不留空格
+                        sb.Append('\n');
+                    }
+                    lineW = 0f;
+                    lastSpace = -1;
+                }
+
+                if (ch == ' ') lastSpace = sb.Length;
+                sb.Append(ch);
+                lineW += chW;
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>量一段文本在给定宽度/缩放下的像素高度（供卡片纵向排布用）。</summary>
+        private static float MeasureTextHeight(string text, float maxWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(text)) return 0f;
+            ReLogic.Graphics.DynamicSpriteFont font = FontAssets.MouseText.Value;
+            string wrapped = WrapText(text, maxWidth, scale);
+            int lines = 1;
+            foreach (char ch in wrapped) if (ch == '\n') lines++;
+            return lines * font.LineSpacing * scale;
+        }
+
         // ==================== 小工具 ====================
 
-        private static MalachitePlayer LocalMp()
+        private void SetNotice(string text, bool isError)
         {
-            if (Main.LocalPlayer == null) return null;
-            return Main.LocalPlayer.GetModPlayer<MalachitePlayer>();
+            _notice = text ?? "";
+            _noticeIsError = isError;
+            _noticeTimer = 240;   // 4 秒后自动清空，避免旧提示常驻误导
+            if (_noticeText != null)
+            {
+                _noticeText.SetText(_notice);
+                _noticeText.TextColor = isError ? MalachitePalette.DangerRed : MalachitePalette.PrimaryGreen;
+            }
         }
+
+        private static MalachitePlayer LocalMp()
+            => Main.LocalPlayer == null ? null : Main.LocalPlayer.GetModPlayer<MalachitePlayer>();
+
+        /// <summary>
+        /// 鼠标位置（UI 元素坐标系）。
+        /// <para/>★ 2026-09-27 实测更正（我在这里犯过错，记下来免得再犯）：
+        /// 我曾以为"UI 元素坐标是 UI 像素、上屏经 Main.UIScaleMatrix 放大，而 Main.MouseScreen 是屏幕像素"，
+        /// 于是写了 <c>Main.MouseScreen / Main.UIScale</c> —— **这是错的**，实机表现为"鼠标离节点很远才选中"，
+        /// 且偏移量随离屏幕原点距离线性放大（用户反馈"非常非常非常大"）。
+        /// 正确约定（tModLoader 自带代码即为证）：
+        /// <c>Main.mouseX/mouseY</c>（=<see cref="Main.MouseScreen"/>) 与 <c>UIElement</c> 的
+        /// <c>GetDimensions()</c> **本来就是同一个坐标空间**，直接相减即可。
+        /// 证据：<c>ModLoader/UI/UIFocusInputTextField.cs</c> 里
+        /// <c>Vector2 MousePosition = new Vector2(Main.mouseX, Main.mouseY); if (!ContainsPoint(MousePosition) ...)</c>
+        /// —— <c>ContainsPoint</c> 判定的就是元素自身尺寸，两者直接比较、没有任何缩放。
+        /// </summary>
+        private static Vector2 MouseUi() => Main.MouseScreen;
 
         /// <summary>左上对齐文本（TextOriginX/Y = 0，避免居中默认值干扰坐标布局）。</summary>
         private static UIText MakeText(string text, float scale, Color color)
@@ -479,37 +781,26 @@ namespace 可成长的孔雀翎
             return t;
         }
 
-        /// <summary>居中文本（HAlign=0.5 + 原点居中）。</summary>
-        private static UIText MakeCenteredText(string text, float scale, Color color)
-        {
-            UIText t = new UIText(text, scale);
-            t.HAlign = 0.5f;
-            t.TextOriginX = 0.5f;
-            t.TextOriginY = 0f;
-            t.TextColor = color;
-            return t;
-        }
-
-        /// <summary>面板按钮基座：默认 30x28，调用方可覆写；文字内容居中。宽度/高度由调用方设置。</summary>
+        /// <summary>面板按钮基座：默认 30x28，调用方可覆写；文字居中。</summary>
         private UIPanel MakeButton(string label, float textScale, Color labelColor, Action onClick)
         {
             UIPanel btn = new UIPanel();
             btn.Width.Set(30, 0f);
             btn.Height.Set(28, 0f);
-            btn.BackgroundColor = MalachitePalette.GreenDark * 0.9f;
-            btn.BorderColor = MalachitePalette.PrimaryGreen * 0.7f;
+            btn.BackgroundColor = MalachitePalette.GreenDeep;
+            btn.BorderColor = MalachitePalette.StarCardBorder;
             btn.SetPadding(0);
 
             btn.OnMouseOver += (evt, element) =>
             {
-                btn.BackgroundColor = MalachitePalette.GreenDeep;
+                btn.BackgroundColor = MalachitePalette.GreenDark;
                 btn.BorderColor = MalachitePalette.GreenBright;
                 SoundEngine.PlaySound(SoundID.MenuTick);
             };
             btn.OnMouseOut += (evt, element) =>
             {
-                btn.BackgroundColor = MalachitePalette.GreenDark * 0.9f;
-                btn.BorderColor = MalachitePalette.PrimaryGreen * 0.7f;
+                btn.BackgroundColor = MalachitePalette.GreenDeep;
+                btn.BorderColor = MalachitePalette.StarCardBorder;
             };
             btn.OnLeftClick += (evt, element) => onClick?.Invoke();
 

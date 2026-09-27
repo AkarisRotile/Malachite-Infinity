@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Terraria;
 using Terraria.ID;
@@ -80,7 +81,11 @@ namespace 可成长的孔雀翎
             new List<(int, string)> { (0, "Exo shattered, the Witch submits..."), (0, "The creator paid the price for his arrogance. The jungle's blood feud is finally settled."), (0, "Thank you for breaking this cage of fate for me."), (0, "For all the years to come, let me stay by your side forever, nowhere else, okay?") }
         };
 
-        public static List<(int face, string text)> GetMilestoneDialogues(int stage) => IsEnglish ? MilestoneDialoguesEn[stage] : MilestoneDialoguesZh[stage];
+        public static List<(int face, string text)> GetMilestoneDialogues(int stage)
+        {
+            stage = Math.Clamp(stage, 0, MilestoneDialoguesZh.Length - 1); // 越界防御（与 WillowGrowth.ClampStage 同风格）
+            return IsEnglish ? MilestoneDialoguesEn[stage] : MilestoneDialoguesZh[stage];
+        }
 
         public static Color LightGreen = Color.LightGreen;
         public static Color MediumPurple = Color.MediumPurple;

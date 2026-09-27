@@ -14,6 +14,29 @@ namespace 可成长的孔雀翎
         // 注：多人把服务端点数同步到各客户端属后续波次 TODO（单机/主机本地即时生效）。
         public override void OnKill(NPC npc)
         {
+            // ---- 星网门槛解锁提示（2026-09-27 星图 3.0）----
+            // 语义变更（决策 D26）：击杀**不再自动赠送节点**，只是把对应星宿/星核的"购买资格"打开。
+            // 因此这里只做一次提示，让玩家知道"星图上多了可点亮的星"，真正的点亮由玩家花技能点完成。
+            // 放在 NetmodeID 门之前：downed* 为全端同步的世界进度，各客户端都该看到自己可买什么。
+            if (npc.type == NPCID.KingSlime || npc.type == NPCID.SkeletronHead
+                || npc.type == NPCID.WallofFlesh || npc.type == NPCID.Plantera
+                || npc.type == NPCID.Golem || npc.type == NPCID.CultistBoss
+                || npc.type == NPCID.MoonLordCore)
+            {
+                if (!Main.dedServ && Main.myPlayer >= 0 && Main.myPlayer < Main.maxPlayers)
+                {
+                    var localMp = Main.player[Main.myPlayer].GetModPlayer<MalachitePlayer>();
+                    string unlocked = StarNetwork.NewlyAvailableSummary(localMp, 2);
+                    if (!string.IsNullOrEmpty(unlocked))
+                    {
+                        Main.NewText(MalachiteData.Loc(
+                            $"【星网】新的星可点亮：{unlocked} —— 打开天赋星图（左下纹章）查看。",
+                            $"[Star Web] New stars are available: {unlocked} — open the Star Map (bottom-left sigil)."),
+                            MalachitePalette.AccentGold);
+                    }
+                }
+            }
+
             if (!npc.boss || Main.netMode == NetmodeID.MultiplayerClient) return;
 
             var progress = MalachiteProgress.Instance;

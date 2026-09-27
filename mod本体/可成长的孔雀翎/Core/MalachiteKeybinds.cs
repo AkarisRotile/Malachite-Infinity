@@ -15,8 +15,9 @@ namespace 可成长的孔雀翎
             // 注册快捷键，默认绑定为鼠标右键 (Mouse2)
             // 玩家可以在泰拉瑞亚的“设置 -> 控件 -> 下滑到模组控制”中找到并修改它
             DialogueKey = KeybindLoader.RegisterKeybind(Mod, "与孔雀翎对话 (Talk to Malachite)", "Mouse2");
-            // 领域展开（原型测试键，默认 V）
-            DomainKey = KeybindLoader.RegisterKeybind(Mod, "领域展开 (Domain Expansion)", "V");
+            // 碧翎念涌（星核技能键，默认 V）
+            // 注：字段名仍叫 DomainKey —— 改名要同步 ProcessTriggers 与所有引用，收益不大，留个名字上的历史痕迹无妨。
+            DomainKey = KeybindLoader.RegisterKeybind(Mod, "碧翎念涌 (Verdant Plumage)", "V");
             // 近战攻击（原型测试键，默认 F；按住连段，设置里可自由改键）
             MeleeKey = KeybindLoader.RegisterKeybind(Mod, "近战攻击 (Melee Attack)", "F");
         }

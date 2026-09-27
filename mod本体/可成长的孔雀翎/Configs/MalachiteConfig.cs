@@ -33,7 +33,7 @@ namespace 可成长的孔雀翎
         [DefaultValue(ParticleEffectLevel.Medium)]
         [DrawTicks]
         public ParticleEffectLevel ParticleLevel;
-        
+
         [Header("UI_界面设置")]
         [Label("Auto Play Dialog / 自动播放对话")]
         [Tooltip("When enabled, dialogues will play automatically. When disabled, you need to click the dialog box to proceed.\n开启时对话将自动播放，关闭时需要点击对话框才能进入下一句。")]

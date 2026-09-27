@@ -33,11 +33,8 @@ namespace 可成长的孔雀翎
 
         private static readonly int[] ArmorPen = { 5, 7, 8, 9, 10, 10, 10, 12, 14, 16, 20, 24, 28, 35 };
 
-        private static readonly float[] StealthMult = { 0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.25f, 1.3f, 1.35f, 1.4f, 1.45f, 1.5f, 1.6f, 1.8f, 2.5f };
-
         public static float DamageMult(int stage) => Damage[ClampStage(stage)];
         public static float SpeedFactor(int stage) => Speed[ClampStage(stage)];
         public static int FlatAP(int stage) => ArmorPen[ClampStage(stage)];
-        public static float StealthDamageMult(int stage) => StealthMult[ClampStage(stage)];
     }
 }

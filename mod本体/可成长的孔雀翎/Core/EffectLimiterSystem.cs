@@ -51,13 +51,13 @@ namespace 可成长的孔雀翎
             int dust = Dust.NewDust(position - new Vector2(2f, 2f), 4, 4, DustID.TintableDust, velocity.X, velocity.Y, 0, color, scale);
             if (dust >= 0 && dust < Main.maxDust)
             {
-                Dust d = Main.dust[dust];
-                d.noGravity = true;
-                d.noLightEmittence = false;
-                d.scale = Math.Clamp(scale, 0.4f, 4f);
-                d.fadeIn = 0.8f;
+                // 修复（质量扫仓 2026-09-05）：Dust 是 struct，索引返回副本——对副本字段赋值全部无效，必须逐字段直写。
+                Main.dust[dust].noGravity = true;
+                Main.dust[dust].noLightEmittence = false;
+                Main.dust[dust].scale = Math.Clamp(scale, 0.4f, 4f);
+                Main.dust[dust].fadeIn = 0.8f;
                 if (lifetime > 0)
-                    d.active = true;
+                    Main.dust[dust].active = true;
             }
         }
     }

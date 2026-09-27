@@ -24,6 +24,9 @@ Projectiles: {
 	MalachiteCataFist.DisplayName: Malachite Cata Fist
 	MalachiteCataSlash.DisplayName: Malachite Cata Slash
 	EsCrestSigilProj.DisplayName: 空间纹章 / Es Crest Sigil
+	OrbitingCrestProj.DisplayName: 灼翎纹章 / Radiant Crest
+	OrbitingWillowProj.DisplayName: 流风剑阵 / Wandering Blades
+	MalachiteBolt.DisplayName: 孔雀射线 / Malachite Bolt
 }
 
 Configs: {
@@ -101,4 +104,4 @@ Configs: {
 	}
 }
 
-"Keybinds.与孔雀翎对话 (Talk to Malachite).DisplayName": 与孔雀翎对话 ( Talk to  Malachite)
+"Keybinds.与孔雀翎对话 (Talk to Malachite).DisplayName": 与孔雀翎对话 (Talk to Malachite)

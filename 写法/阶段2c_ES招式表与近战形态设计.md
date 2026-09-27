@@ -37,3 +37,24 @@
 - 手感 OK 后接入「技」页节点模型（D19）；
 - MP 权威同步（D20）列为后续 M 项；
 - 调参入口全部集中在 MalachiteMelee（含招式弧线数组与倍率）。
+
+---
+
+## 六、v6.4 更新（2026-09-03，用户工程级 Prompt 落地，见更新日志）
+- **枚举升级**：MoveKind 八招式（Step1/Step2/Step3、UpperRise、AirNeutral、AirDive、DashCut、Finisher；Charged 保留为 v5.2 蓄力重斩）。
+- **输入判定树（D17 落地版）**：冲刺（dashDelay<0 ∨ 双击突进窗口 ∨ |vel.X|>8 水平疾驰）→ DashCut；空中 下/上/无方向 → AirDive / UpperRise / AirNeutral；地面 上方向 → UpperRise，否则三段 Step1/2/3；蓄力松手 > 方向修饰 > 段击。
+- **取消管线（新增）**：目押取消 Gatling（SweepEnd+1~TotalFrames 窗内近战键→无缝下一段）；跳跃取消 JC（Step2 命中卡肉窗内跳跃键→vel.Y=-9.2 同步升空）。
+- **空间纹章参数契约矩阵（新增）**：`EsCrestSigilProj.SetupCrest` 配置入口 + `MalachiteMelee.CrestSpecOf` 矩阵唯一出处（八招的外形长宽比/缩放/生成位置/引爆延迟/伤害倍率/命中机制）。
+- **断链窗口**：26 → 45 帧（Prompt §一.1）。
+- **代码位置**：MalachiteMelee 已迁至 `Core\MalachiteMelee.cs`（原 TalentModel.cs 内）。
+
+### v6.6 补记（2026-09-03）
+- **空战三连段**：AirNeutral 退役 → AirStep1/2/3（j.A 斜上 45° 快撩 10 帧 / j.B 水平 180° 大回旋·半空留置雷 / j.C 下劈·命中强制击坠 target.velocity.Y=12）；AirComboStep 流转、落地复位；目押取消覆盖空战链。
+- **突刺判定严格化**：DashCut 只看双击 A/D 窗口（LastDashTick ≤ DashImmuneTime），移除移动速度/克苏鲁护盾判定。
+- **AirDive 提速**：AirDiveSpeedY 16 → 24（实机反馈）。
+- **刀光病灶根除**：DrawCore 删除 MeleeSlash.png 三次 Additive 叠加（死白月牙真凶），形态 100% 由顶点网格呈现；段2 tint 改回翠绿。
+- **纹章 2.0 护眼版**：Extra[98]/[89] 五层神圣几何，纯白锁核心 ×0.22，时间轴按各纹章 delay 自适应。
+
+### v6.7 补记（2026-09-03）
+- **两段式终结**：满月终结重构为 Finisher1（斜上前撩飞升，SweepEnd 顶点清速冻结 8 帧 + 初阶小单翼 Tier0，后摇按普攻提前派生/结束自动切入）+ Finisher2（斜下流星贯穿 16 帧无敌，终点 10 帧极强卡肉 + 终阶巨单翼 Tier1 + 金色纹章立即全屏引爆 210% 破甲）。
+- **新增 EsCrestWingsProj**：双阶单侧神圣光翼（Tier0 4 刃 95px 4 帧弹开 24 帧；Tier1 7 刃 195px 6 帧弹开 48 帧 + 星轨连线/半月圣环），锚定后肩、禁止前翻、超射弹簧曲线。

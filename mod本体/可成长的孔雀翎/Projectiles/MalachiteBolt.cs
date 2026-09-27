@@ -17,21 +17,19 @@ using Microsoft.Xna.Framework.Graphics;
 namespace 可成长的孔雀翎
 {
     /// <summary>
-    /// 孔雀柳刃·潜伏射线（真射线，参考灾厄 MalachiteBolt 范式）：
+    /// 孔雀柳刃·射线（真射线，参考灾厄 MalachiteBolt 范式）：
     /// - extraUpdates 极速（视觉飞成光线的关键）
     /// - TrailCacheLength 残影 + 自绘 afterimages 连成光带
     /// - CWR 三层配色思想：白芯 / 主色发光 / 外晕，additive
     /// - 命中：穿透耗尽时爆炸 + 火花
     /// </summary>
-    public class MalachiteBolt : ModProjectile, IStealthStrikeProjectile
+    public class MalachiteBolt : ModProjectile
     {
         public override string Texture => "可成长的孔雀翎/Textures/MalachiteBoltTex";
 
-        // 潜伏标记（v2 起本类自持；当前射线不主动发潜伏，字段保留供后续攻击模式接入）
-        public bool IsStealthStrike { get; set; }
-
         private bool _initialized = false;
         private bool _exploded = false;
+        private int _dustTick = 0; // extraUpdates=8 节流：光尘判定按整帧摊薄，避免每 tick 9 次预算查询
 
         public override void SetStaticDefaults()
         {
@@ -57,8 +55,6 @@ namespace 可成长的孔雀翎
 
         public override void AI()
         {
-            Player player = Main.player[Projectile.owner];
-
             if (!_initialized)
             {
                 _initialized = true;
@@ -76,15 +72,17 @@ namespace 可成长的孔雀翎
                 Projectile.rotation = Projectile.velocity.ToRotation();
 
             // 沿束散光尘（参考 CWR SpawnLaserParticles：沿路径散布）
-            if (Main.rand.NextBool(2) && EffectLimiterSystem.CanSpawnEffect(1, 100))
+            // 注：extraUpdates=8 → AI 每整帧执行 9 次；光尘判定每 4 子步一次（≈2.25 次/整帧），
+            //     同时削减 Main.rand 与 CanSpawnEffect(内含 ModContent.GetInstance 查询) 的 9 倍调用
+            if (++_dustTick % 4 == 0 && Main.rand.NextBool(2) && EffectLimiterSystem.CanSpawnEffect(1, 100))
             {
                 Vector2 pos = Projectile.Center + Main.rand.NextVector2Circular(6f, 6f);
-                Dust d = Dust.NewDustPerfect(pos, DustID.TintableDust,
+                int di = Dust.NewDustPerfect(pos, DustID.TintableDust,
                     -Projectile.velocity * 0.05f + Main.rand.NextVector2Circular(1.5f, 1.5f),
                     0, Main.rand.NextBool(3) ? MalachitePalette.White : MalachitePalette.AccentCyan,
-                    Main.rand.NextFloat(0.5f, 0.9f));
-                d.noGravity = true;
-                d.fadeIn = 0.3f;
+                    Main.rand.NextFloat(0.5f, 0.9f)).dustIndex;
+                Main.dust[di].noGravity = true;
+                Main.dust[di].fadeIn = 0.3f;
             }
 
             Lighting.AddLight(Projectile.Center, 0.31f, 0.85f, 0.91f);
@@ -94,38 +92,13 @@ namespace 可成长的孔雀翎
         public override bool PreDraw(ref Color lightColor)
         {
             Texture2D tex = ModContent.Request<Texture2D>(Texture).Value;
-            Vector2 texCenter = tex.Size() / 2f;
-            Vector2 screenPos = Projectile.Center - Main.screenPosition;
 
-
-            // 1) 残影连成光带（沿旧位置，透明度递减）
-            for (int i = 0; i < Projectile.oldPos.Length; i++)
-            {
-                float t = 1f - i / (float)Projectile.oldPos.Length;
-                Vector2 pos = Projectile.oldPos[i] + new Vector2(Projectile.width / 2f, Projectile.height / 2f) - Main.screenPosition;
-                Color trailCol = MalachitePalette.AccentCyan * (t * 0.45f);
-                Main.spriteBatch.Draw(tex, pos, null, trailCol, Projectile.rotation, texCenter,
-                    Projectile.scale * (0.5f + 0.5f * t), SpriteEffects.None, 0f);
-            }
-
-            // 2) 头部三层光晕（白芯 + 主色发光 + 外晕）
-            Color auraCol = MalachitePalette.AccentCyan * 0.30f;
-            Color glowCol = MalachitePalette.AccentCyan * 0.75f;
-            Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, auraCol, 0f,
-                new Vector2(0.5f), 16f, SpriteEffects.None, 0f);
-            Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, glowCol, 0f,
-                new Vector2(0.5f), 8f, SpriteEffects.None, 0f);
-            Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, MalachitePalette.White * 0.9f, 0f,
-                new Vector2(0.5f), 3f, SpriteEffects.None, 0f);
-
-            // 3) 沿速度方向的光带（CWR 三层：Core/Glow/Aura）
-            Vector2 dir = Projectile.velocity.SafeNormalize(Vector2.UnitX);
-            Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, auraCol, dir.ToRotation(),
-                new Vector2(0f, 0.5f), new Vector2(140f, 14f), SpriteEffects.None, 0f);
-            Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, glowCol, dir.ToRotation(),
-                new Vector2(0f, 0.5f), new Vector2(120f, 7f), SpriteEffects.None, 0f);
-            Main.spriteBatch.Draw(AdditiveLayer.Pixel, screenPos, null, MalachitePalette.White * 0.55f, dir.ToRotation(),
-                new Vector2(0f, 0.5f), new Vector2(100f, 2.5f), SpriteEffects.None, 0f);
+            // 绘制数学已提取至 Core\Vfx\VfxDraw.cs（唯一出处：游戏内与离线预览共用）
+            VfxDraw.DrawBoltRay(Main.spriteBatch, tex, AdditiveLayer.Pixel,
+                Projectile.oldPos, Projectile.Center,
+                new Vector2(Projectile.width / 2f, Projectile.height / 2f),
+                Projectile.rotation, Projectile.scale, Projectile.velocity,
+                MalachitePalette.AccentCyan, Main.screenPosition);
 
             return false;
         }
@@ -142,11 +115,11 @@ namespace 可成长的孔雀翎
                 for (int i = 0; i < 5; i++)
                 {
                     Vector2 vel = Main.rand.NextVector2CircularEdge(3f, 3f) * Main.rand.NextFloat(1f, 2f);
-                    Dust d = Dust.NewDustPerfect(target.Center + vel, DustID.TintableDust, vel, 0,
+                    int di = Dust.NewDustPerfect(target.Center + vel, DustID.TintableDust, vel, 0,
                         Main.rand.NextBool(2) ? MalachitePalette.White : MalachitePalette.AccentCyan,
-                        Main.rand.NextFloat(0.5f, 1.1f));
-                    d.noGravity = true;
-                    d.fadeIn = 0.3f;
+                        Main.rand.NextFloat(0.5f, 1.1f)).dustIndex;
+                    Main.dust[di].noGravity = true;
+                    Main.dust[di].fadeIn = 0.3f;
                 }
             }
 
@@ -160,18 +133,22 @@ namespace 可成长的孔雀翎
 
         private void Explode(Vector2 center)
         {
-            if (!EffectLimiterSystem.CanSpawnEffect(5, 140)) return;
+            // 修复（质量扫仓 2026-09-05）：伤害/音效此前被粒子预算门整体吞掉——预算超限时整个方法提前返回，
+            // AOE 溅射与爆炸音效静默失效。预算门只应作用于视觉 Dust，伤害与音效无条件执行。
             SoundEngine.PlaySound(SoundID.Item14 with { Volume = 0.6f, Pitch = 0.2f }, center);
-            for (int i = 0; i < 30; i++)
+            if (EffectLimiterSystem.CanSpawnEffect(5, 140))
             {
-                Vector2 vel = Main.rand.NextVector2Circular(8f, 8f);
-                Dust d = Dust.NewDustPerfect(center + Main.rand.NextVector2Circular(10f, 10f), DustID.TintableDust, vel, 0,
-                    i % 3 == 0 ? MalachitePalette.White : MalachitePalette.AccentCyan,
-                    Main.rand.NextFloat(0.7f, 1.5f));
-                d.noGravity = true;
-                d.fadeIn = 0.5f;
+                for (int i = 0; i < 30; i++)
+                {
+                        Vector2 vel = Main.rand.NextVector2Circular(8f, 8f);
+                        int di = Dust.NewDustPerfect(center + Main.rand.NextVector2Circular(10f, 10f), DustID.TintableDust, vel, 0,
+                                i % 3 == 0 ? MalachitePalette.White : MalachitePalette.AccentCyan,
+                                Main.rand.NextFloat(0.7f, 1.5f)).dustIndex;
+                        Main.dust[di].noGravity = true;
+                        Main.dust[di].fadeIn = 0.5f;
+                }
             }
-            // 范围内溅射伤害
+            // 范围内溅射伤害（MP 权威结算属 D20 计划，owner 判定原样保留）
             if (Projectile.owner == Main.myPlayer)
             {
                 foreach (NPC n in Main.ActiveNPCs)
